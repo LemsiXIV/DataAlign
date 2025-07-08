@@ -86,8 +86,8 @@ def upload_file():
 #function compare 
 @app.route('/compare', methods=['POST'])
 def compare():
-    key1 = request.form.get('key1')
-    key2 = request.form.get('key2')
+    keys1 = request.form.getlist('key1')
+    keys2 = request.form.getlist('key2')
 
     try:
         df = pd.read_json(StringIO(session['data']))
@@ -96,26 +96,36 @@ def compare():
         flash(f"Erreur lors de la lecture des données en session : {e}", "error")
         return redirect(url_for('index'))
 
-    if key1 not in df.columns or key2 not in df2.columns:
-        flash("Clé invalide sélectionnée.", "error")
+    if not keys1 or not keys2:
+        flash("Veuillez sélectionner au moins une clé dans chaque fichier.", "error")
         return redirect(url_for('index'))
+        
+    if not all(k in df.columns for k in keys1) or not all(k in df2.columns for k in keys2):
+        flash("Clés invalides sélectionnées.", "error")
+        return redirect(url_for('index'))
+
+    # Create concatenated keys for comparison
+    df['_compare_key'] = df[keys1].astype(str).agg('|'.join, axis=1)
+    df2['_compare_key'] = df2[keys2].astype(str).agg('|'.join, axis=1)
 
     file1_name = session.get('file1_name', 'Fichier 1')
     file2_name = session.get('file2_name', 'Fichier 2')
 
-    merged = pd.merge(df, df2, left_on=key1, right_on=key2, how='outer', indicator=True)
+    merged = pd.merge(df, df2, left_on='_compare_key', right_on='_compare_key', how='outer', indicator=True)
+
 
     # Filter differences using indicator
     ecarts_fichier1 = merged[merged['_merge'] == 'left_only']
     ecarts_fichier2 = merged[merged['_merge'] == 'right_only']
 
     return render_template("compare.html",
-                           key1=key1,
-                           key2=key2,
+                           key1=' + '.join(keys1),
+                           key2=' + '.join(keys2),
                            ecarts1=ecarts_fichier1.to_dict(orient='records'),
                            ecarts2=ecarts_fichier2.to_dict(orient='records'),
                            file1_name=file1_name,
                            file2_name=file2_name)
+
 
 
 

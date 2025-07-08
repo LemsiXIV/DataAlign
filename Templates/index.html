@@ -176,22 +176,26 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 🗂️ Clé dans le fichier 1 :
                             </label>
-                            <select name="key1" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                            <select name="key1" multiple class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
                                 {% for col in columns %}
                                     <option value="{{ col }}">{{ col }}</option>
                                 {% endfor %}
                             </select>
+                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vous pouvez sélectionner plusieurs colonnes avec Ctrl / Cmd + clic.</p>
+
                         </div>
 
                         <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 🗃️ Clé dans le fichier 2 :
                             </label>
-                            <select name="key2" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                            <select name="key2" multiple class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
                                 {% for col in columns2 %}
                                     <option value="{{ col }}">{{ col }}</option>
                                 {% endfor %}
                             </select>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vous pouvez sélectionner plusieurs colonnes avec Ctrl / Cmd + clic.</p>
+
                         </div>
 
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">

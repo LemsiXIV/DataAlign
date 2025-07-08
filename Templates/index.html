@@ -165,7 +165,32 @@
                     </section>
             <!-- add project section end -->
 
-        
+            <!-- compart section -->
+                    <!-- Add this in index.html after displaying data -->
+                            {% if columns and columns2 %}
+                            <form method="POST" action="/compare">
+                                <h3>Choisissez les clés pour comparer :</h3>
+                                <div>
+                                    <label>Clé dans le fichier 1 :</label>
+                                    <select name="key1">
+                                        {% for col in columns %}
+                                            <option value="{{ col }}">{{ col }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Clé dans le fichier 2 :</label>
+                                    <select name="key2">
+                                        {% for col in columns2 %}
+                                            <option value="{{ col }}">{{ col }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <button type="submit">Comparer</button>
+                            </form>
+                            {% endif %}
+
+            <!-- compart nd section -->
         <!-- table start section -->
             
                     <section class="py-10 px-4">

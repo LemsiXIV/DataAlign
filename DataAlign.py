@@ -1,12 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-import pandas as pd
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import os
-
+import pandas as pd
+from io import StringIO 
 app = Flask(__name__)
 app.secret_key = '12GQSGQza&ç_çàFAFSF'
 
+
+
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 @app.route("/")
 @app.route("/index")
@@ -72,7 +76,49 @@ def upload_file():
     data2 = df2.to_dict(orient='records')
     columns2 = df2.columns.tolist()
 
+    session['data'] = df.to_json()
+    session['data2'] = df2.to_json()
+    session['file1_name'] = file.filename
+    session['file2_name'] = file2.filename
     return render_template('index.html', data=data, columns=columns, data2=data2, columns2=columns2)
+
+
+#function compare 
+@app.route('/compare', methods=['POST'])
+def compare():
+    key1 = request.form.get('key1')
+    key2 = request.form.get('key2')
+
+    try:
+        df = pd.read_json(StringIO(session['data']))
+        df2 = pd.read_json(StringIO(session['data2']))
+    except Exception as e:
+        flash(f"Erreur lors de la lecture des données en session : {e}", "error")
+        return redirect(url_for('index'))
+
+    if key1 not in df.columns or key2 not in df2.columns:
+        flash("Clé invalide sélectionnée.", "error")
+        return redirect(url_for('index'))
+
+    file1_name = session.get('file1_name', 'Fichier 1')
+    file2_name = session.get('file2_name', 'Fichier 2')
+
+    merged = pd.merge(df, df2, left_on=key1, right_on=key2, how='outer', indicator=True)
+
+    # Filter differences using indicator
+    ecarts_fichier1 = merged[merged['_merge'] == 'left_only']
+    ecarts_fichier2 = merged[merged['_merge'] == 'right_only']
+
+    return render_template("compare.html",
+                           key1=key1,
+                           key2=key2,
+                           ecarts1=ecarts_fichier1.to_dict(orient='records'),
+                           ecarts2=ecarts_fichier2.to_dict(orient='records'),
+                           file1_name=file1_name,
+                           file2_name=file2_name)
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

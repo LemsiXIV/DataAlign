@@ -116,6 +116,19 @@
 
         <!-- pi chart start -->
     <section class="py-10 px-4">
+
+        <div class="p-4 bg-gray-100 rounded-lg shadow mb-4">
+            <h2 class="text-lg font-semibold mb-2">Résumé de la comparaison</h2>
+            <ul class="list-disc pl-5 text-sm">
+                <li><strong>Total de lignes comparées :</strong> {{ total }}</li>
+                <li><strong>Lignes dans {{ file1_name }} :</strong> {{ nb_df }}</li>
+                <li><strong>Lignes dans {{ file2_name }} :</strong> {{ nb_df2 }}</li>
+                <li class="text-red-500"><strong>Écarts détectés :</strong> {{ total_ecarts }} ({{ n1 }} dans {{ file1_name }}, {{ n2 }} dans {{ file2_name }})</li>
+                <li class="text-green-600"><strong>Lignes communes :</strong> {{ n_common }}</li>
+            </ul>
+        </div>
+
+
         <h2 class="text-xl font-bold mt-8 mb-4">Répartition des Données</h2>
         <canvas id="repartitionChart" width="400" height="400"></canvas>
 
@@ -151,7 +164,7 @@
                 }
             });
         </script>
-        
+
         <div class="mb-4 space-y-1">
             <div><strong>Seulement dans {{ file1_name }} :</strong> {{ n1 }} lignes</div>
             <div><strong>Seulement dans {{ file2_name }} :</strong> {{ n2 }} lignes</div>

@@ -132,6 +132,9 @@ def compare():
     n1 = len(ecarts_fichier1)
     n2 = len(ecarts_fichier2)
     n_common = len(communs)
+    total_ecarts = n1 + n2
+    nb_df = len(df)
+    nb_df2 = len(df2)
 
 
     return render_template("compare.html",
@@ -146,15 +149,13 @@ def compare():
                            pct_both=pct_both,
                            n1=n1,
                            n2=n2,
-                           n_common=n_common)
+                           n_common=n_common,
+                           total=total,
+                           total_ecarts=total_ecarts,
+                           nb_df=nb_df,
+                           nb_df2=nb_df2)
 
 
-@app.route("/chart")
-def chart_ex():
-        # Prepare your data in Python
-        labels = ['January', 'February', 'March', 'April', 'May']
-        data = [10, 15, 7, 20, 12]
-        return render_template('chart_ex.html', labels=json.dumps(labels), data=json.dumps(data))
 
 
 if __name__ == '__main__':

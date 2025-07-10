@@ -14,30 +14,30 @@
     <div class="py-4 px-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            {% for category, message in messages %}
-            <div class="p-4 mb-4 text-sm rounded-lg
+        {% for category, message in messages %}
+        <div class="p-4 mb-4 text-sm rounded-lg
                         {% if category == 'error' %} bg-red-100 text-red-800
                         {% elif category == 'success' %} bg-green-100 text-green-800
                         {% else %} bg-blue-100 text-blue-800
                         {% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
+            {{ message }}
+        </div>
+        {% endfor %}
         {% endif %}
         {% endwith %}
     </div>
 
 
 
-        <!-- navbar Start section -->
+    <!-- navbar Start section -->
     <nav class="bg-white border-gray-200 px-2 sm:px-4 py-2.5 rounded-sm dark:bg-gray-900">
         <div class="container flex flex-wrap items-center justify-between mx-auto">
-            <a href="https://flowbite.com/" class="flex items-center">
-                <img src="https://flowbite.com/docs/images/logo.svg" class="h-6 mr-3 sm:h-9" alt="Flowbite Logo">
+            <a href="{{ url_for('index') }}" class="flex items-center">
+                <img src="{{ url_for('static', filename=image_url) }}" style="height:100px;" class="w-48 mr-3 sm:h-28" alt="DataAlign Logo">
                 <span class="self-center text-xl font-semibold whitespace-nowrap dark:text-white">DataAlign</span>
             </a>
             <div class="flex md:order-2">
-                <button type="button"
+                <button  id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal" type="button"
                     class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-3 md:mr-0 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Get
                     started</button>
                 <button data-collapse-toggle="navbar-cta" type="button"
@@ -76,294 +76,343 @@
             </div>
         </div>
     </nav>
-        <!-- navbar End section -->
+    <!-- navbar End section -->
 
-        <!-- hero start section -->
-            <section class="bg-white dark:bg-gray-900">
-                <div class="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
-                    <div class="mr-auto place-self-center lg:col-span-7">
-                        <h1 class="max-w-2xl mb-4 text-4xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white">DataAlign tool for software companies</h1>
-                        <p class="max-w-2xl mb-6 text-gray-500 lg:mb-8 md:text-lg lg:text-xl dark:text-gray-400">From checkout to global sales tax compliance, companies around the world use Flowbite to simplify their payment stack.</p>
-                        <a id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal" href="#" class="inline-flex items-center justify-center px-5 py-3 mr-3 text-base font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900">
-                            Get started
-                            <svg class="w-5 h-5 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                        </a>
-                        <a href="#" class="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800">
-                            Speak to Sales
-                        </a> 
-                    </div>
-                    <div class="hidden lg:mt-0 lg:col-span-5 lg:flex">
-                        <img src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/hero/phone-mockup.png" alt="mockup">
-                    </div>                
-                </div>
-            </section>
-        <!-- hero end section -->
-        
-            <!-- add project section -->
-                      <section class="py-10 px-4">
+    <!-- hero start section -->
+    <section class="bg-white dark:bg-gray-900">
+        <div class="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
+            <div class="mr-auto place-self-center lg:col-span-7">
+                <h1
+                    class="max-w-2xl mb-4 text-4xl font-extrabold leading-none tracking-tight md:text-5xl xl:text-6xl dark:text-white">
+                    DataAlign tool for software companies</h1>
+                <p class="max-w-2xl mb-6 text-gray-500 lg:mb-8 md:text-lg lg:text-xl dark:text-gray-400">From checkout
+                    to global sales tax compliance, companies around the world use Flowbite to simplify their payment
+                    stack.</p>
+                <a id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal" href="#"
+                    class="inline-flex items-center justify-center px-5 py-3 mr-3 text-base font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900">
+                    Get started
+                    <svg class="w-5 h-5 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                            d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </a>
+                <a href="#"
+                    class="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800">
+                    Speak to Sales
+                </a>
+            </div>
+            <div class="hidden lg:mt-0 lg:col-span-5 lg:flex">
+                <img src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/hero/phone-mockup.png" alt="mockup">
+            </div>
+        </div>
+    </section>
+    <!-- hero end section -->
 
-                                <!-- Main modal -->
-                                <div id="defaultModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
-                                    <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
-                                        <!-- Modal content -->
-                                        <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
-                                            <!-- Modal header -->
-                                            <div class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
-                                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                                    Add Project
-                                                </h3>
-                                                <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-toggle="defaultModal">
-                                                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
-                                                    <span class="sr-only">Close modal</span>
-                                                </button>
-                                            </div>
-                                            <!-- Modal body -->
-                                            <form action="/upload" method="POST" enctype="multipart/form-data">
-                                                <div class="grid gap-4 mb-4 sm:grid-cols-2">
-                                                    <div>
-                                                        <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
-                                                        <input type="text" name="name" id="name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Type Project name" required="">
-                                                    </div>
-                                                    <div>
-                                                        <label for="Date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Date</label>
-                                                        <input type="date" name="brand" id="brand" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500" placeholder="Date" required="">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="user_avatar">Upload file 1</label>
-                                                        <input class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="user_avatar_help" id="file" name="file" type="file">
-                                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-300" id="user_avatar_help">Veuillez choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
-                                                        {% if error %}
-                                                            
-                                                            <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
-                                                                <span class="font-medium">{{ error }}</span>
-                                                            </div>
+    <!-- add project section -->
+    <section class="py-10 px-4">
 
-                                                        {% endif %}
-                                                    </div>
-                                                    <div>
-                                                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="user_avatar">Upload file 2</label>
-                                                        <input class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="user_avatar_help" id="file2" name="file2" type="file">
-                                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-300" >Veuillez choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
-                                                        {% if error %}
-                                                            
-                                                            <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
-                                                                <span class="font-medium">{{ error }}</span>
-                                                            </div>
-
-                                                        {% endif %}
-                                                    </div>
-                                                   
-                                                </div>
-                                                <button type="submit" class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                                                    <svg class="mr-1 -ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"></path></svg>
-                                                    Add new Project
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                    </section>
-            <!-- add project section end -->
-
-            <!-- compart section -->
-                {% if columns and columns2 %}
-                    <form method="POST" action="/compare" class="max-w-xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mt-10">
-                        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4 text-center">
-                            🔎 Choisissez les clés pour comparer
+        <!-- Main modal -->
+        <div id="defaultModal" tabindex="-1" aria-hidden="true"
+            class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full">
+            <div class="relative p-4 w-full max-w-2xl h-full md:h-auto">
+                <!-- Modal content -->
+                <div class="relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5">
+                    <!-- Modal header -->
+                    <div
+                        class="flex justify-between items-center pb-4 mb-4 rounded-t border-b sm:mb-5 dark:border-gray-600">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Add Project
                         </h3>
+                        <button type="button"
+                            class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                            data-modal-toggle="defaultModal">
+                            <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            <span class="sr-only">Close modal</span>
+                        </button>
+                    </div>
+                    <!-- Modal body -->
+                    <form action="/upload" method="POST" enctype="multipart/form-data">
+                        <div class="grid gap-4 mb-4 sm:grid-cols-2">
+                            <div>
+                                <label for="name"
+                                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
+                                <input type="text" name="name" id="name"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                                    placeholder="Type Project name" required="">
+                            </div>
+                            <div>
+                                <label for="Date"
+                                    class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Date</label>
+                                <input type="date" name="brand" id="brand"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+                                    placeholder="Date" required="">
+                            </div>
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="user_avatar">Upload file 1</label>
+                                <input
+                                    class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                                    aria-describedby="user_avatar_help" id="file" name="file" type="file">
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-300" id="user_avatar_help">
+                                    Veuillez choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
+                                {% if error %}
 
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                🗂️ Clé dans le fichier 1 :
-                            </label>
-                            <select name="key1" multiple class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
-                                {% for col in columns %}
-                                    <option value="{{ col }}">{{ col }}</option>
-                                {% endfor %}
-                            </select>
-                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vous pouvez sélectionner plusieurs colonnes avec Ctrl / Cmd + clic.</p>
+                                <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                    role="alert">
+                                    <span class="font-medium">{{ error }}</span>
+                                </div>
+
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="user_avatar">Upload file 2</label>
+                                <input
+                                    class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                                    aria-describedby="user_avatar_help" id="file2" name="file2" type="file">
+                                <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">Veuillez choisir un fichier
+                                    du format suivant : CSV,XLSX,JSON.</div>
+                                {% if error %}
+
+                                <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                    role="alert">
+                                    <span class="font-medium">{{ error }}</span>
+                                </div>
+
+                                {% endif %}
+                            </div>
 
                         </div>
-
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                🗃️ Clé dans le fichier 2 :
-                            </label>
-                            <select name="key2" multiple class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
-                                {% for col in columns2 %}
-                                    <option value="{{ col }}">{{ col }}</option>
-                                {% endfor %}
-                            </select>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vous pouvez sélectionner plusieurs colonnes avec Ctrl / Cmd + clic.</p>
-
-                        </div>
-
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
-                            🧮 Comparer
+                        <button type="submit"
+                            class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                            <svg class="mr-1 -ml-1 w-6 h-6" fill="currentColor" viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd"
+                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            Add new Project
                         </button>
                     </form>
-                {% endif %}
-
-            <!-- compart nd section -->
-
-        <!-- table start section -->
-            
-                    <section class="py-10 px-4">
-                        <div class="flex flex-col md:flex-row gap-4">
-                            
-                            {% if data %}
-                            <!-- First Table -->
-                            <div class="flex-1 flex flex-col overflow-hidden overflow-y-auto max-h-[700px] shadow-lg rounded-lg bg-white dark:bg-gray-800">
-                                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                                        📄 Données du premier fichier
-                                    </h2>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        Voici un aperçu des données extraites automatiquement.
-                                    </p>
-                                </div>
-
-                                <div class="flex-1 overflow-auto">
-                                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                            <tr>
-                                                {% for col in columns %}
-                                                <th scope="col" class="px-6 py-3">
-                                                    {{ col }}
-                                                </th>
-                                                {% endfor %}
-                                                <th scope="col" class="px-6 py-3">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for row in data %}
-                                            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                {% for col in columns %}
-                                                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {{ row[col] }}
-                                                </td>
-                                                {% endfor %}
-                                                <td class="flex items-center px-6 py-4">
-                                                    <a href="#" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
-                                                    <a href="#" class="font-medium text-red-600 dark:text-red-500 hover:underline ms-3">Remove</a>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% if data2 %}
-                            <!-- Second Table -->
-                            <div class="flex-1 flex flex-col overflow-hidden overflow-y-auto max-h-[700px] shadow-lg rounded-lg bg-white dark:bg-gray-800">
-                                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                                        📄 Données du deuxième fichier
-                                    </h2>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        Voici un aperçu des données extraites automatiquement.
-                                    </p>
-                                </div>
-
-                                <div class="flex-1 overflow-auto">
-                                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                            <tr>
-                                                {% for col in columns2 %}
-                                                <th scope="col" class="px-6 py-3">
-                                                    {{ col }}
-                                                </th>
-                                                {% endfor %}
-                                                <th scope="col" class="px-6 py-3">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for row in data2 %}
-                                            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                {% for col in columns2 %}
-                                                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {{ row[col] }}
-                                                </td>
-                                                {% endfor %}
-                                                <td class="flex items-center px-6 py-4">
-                                                    <a href="#" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
-                                                    <a href="#" class="font-medium text-red-600 dark:text-red-500 hover:underline ms-3">Remove</a>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </section>
-
-
-
-            
-
-        <!-- table end section -->
-
-
-                    
-
-
-
-
-        <!-- footer start section -->
-
-                            <footer class="bg-white rounded-lg shadow sm:flex sm:items-center sm:justify-between p-4 sm:p-6 xl:p-8 dark:bg-gray-800 antialiased">
-                <p class="mb-4 text-sm text-center text-gray-500 dark:text-gray-400 sm:mb-0">
-                    &copy; 2024-2025 <a href="https://sof-tunisie.sofrecom.fr/fr" class="hover:underline" target="_blank">Sofrecom.com</a>. All rights reserved.
-                </p>
-                <div class="flex justify-center items-center space-x-1">
-                    <a href="#" data-tooltip-target="tooltip-facebook" class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
-                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 8 19">
-                            <path fill-rule="evenodd" d="M6.135 3H8V0H6.135a4.147 4.147 0 0 0-4.142 4.142V6H0v3h2v9.938h3V9h2.021l.592-3H5V3.591A.6.6 0 0 1 5.592 3h.543Z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="sr-only">Facebook</span>
-                    </a>
-                    <div id="tooltip-facebook" role="tooltip" class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
-                        Like us on Facebook
-                        <div class="tooltip-arrow" data-popper-arrow></div>
-                    </div>
-                    <a href="#" data-tooltip-target="tooltip-twitter" class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
-                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
-                            <path fill="currentColor" d="M12.186 8.672 18.743.947h-2.927l-5.005 5.9-4.44-5.9H0l7.434 9.876-6.986 8.23h2.927l5.434-6.4 4.82 6.4H20L12.186 8.672Zm-2.267 2.671L8.544 9.515 3.2 2.42h2.2l4.312 5.719 1.375 1.828 5.731 7.613h-2.2l-4.699-6.237Z"/>
-                        </svg>
-                        <span class="sr-only">Twitter</span>
-                    </a>
-                    <div id="tooltip-twitter" role="tooltip" class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
-                        Follow us on Twitter
-                        <div class="tooltip-arrow" data-popper-arrow></div>
-                    </div>
-                    <a href="#" data-tooltip-target="tooltip-github" class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
-                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 .333A9.911 9.911 0 0 0 6.866 19.65c.5.092.678-.215.678-.477 0-.237-.01-1.017-.014-1.845-2.757.6-3.338-1.169-3.338-1.169a2.627 2.627 0 0 0-1.1-1.451c-.9-.615.07-.6.07-.6a2.084 2.084 0 0 1 1.518 1.021 2.11 2.11 0 0 0 2.884.823c.044-.503.268-.973.63-1.325-2.2-.25-4.516-1.1-4.516-4.9A3.832 3.832 0 0 1 4.7 7.068a3.56 3.56 0 0 1 .095-2.623s.832-.266 2.726 1.016a9.409 9.409 0 0 1 4.962 0c1.89-1.282 2.717-1.016 2.717-1.016.366.83.402 1.768.1 2.623a3.827 3.827 0 0 1 1.02 2.659c0 3.807-2.319 4.644-4.525 4.889a2.366 2.366 0 0 1 .673 1.834c0 1.326-.012 2.394-.012 2.72 0 .263.18.572.681.475A9.911 9.911 0 0 0 10 .333Z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="sr-only">Github</span>
-                    </a>
-                    <div id="tooltip-github" role="tooltip" class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
-                        Star us on GitHub
-                        <div class="tooltip-arrow" data-popper-arrow></div>
-                    </div>
-                    <a href="#" data-tooltip-target="tooltip-dribbble" class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
-                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 0a10 10 0 1 0 10 10A10.009 10.009 0 0 0 10 0Zm6.613 4.614a8.523 8.523 0 0 1 1.93 5.32 20.094 20.094 0 0 0-5.949-.274c-.059-.149-.122-.292-.184-.441a23.879 23.879 0 0 0-.566-1.239 11.41 11.41 0 0 0 4.769-3.366ZM8 1.707a8.821 8.821 0 0 1 2-.238 8.5 8.5 0 0 1 5.664 2.152 9.608 9.608 0 0 1-4.476 3.087A45.758 45.758 0 0 0 8 1.707ZM1.642 8.262a8.57 8.57 0 0 1 4.73-5.981A53.998 53.998 0 0 1 9.54 7.222a32.078 32.078 0 0 1-7.9 1.04h.002Zm2.01 7.46a8.51 8.51 0 0 1-2.2-5.707v-.262a31.64 31.64 0 0 0 8.777-1.219c.243.477.477.964.692 1.449-.114.032-.227.067-.336.1a13.569 13.569 0 0 0-6.942 5.636l.009.003ZM10 18.556a8.508 8.508 0 0 1-5.243-1.8 11.717 11.717 0 0 1 6.7-5.332.509.509 0 0 1 .055-.02 35.65 35.65 0 0 1 1.819 6.476 8.476 8.476 0 0 1-3.331.676Zm4.772-1.462A37.232 37.232 0 0 0 13.113 11a12.513 12.513 0 0 1 5.321.364 8.56 8.56 0 0 1-3.66 5.73h-.002Z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="sr-only">Dribbble</span>
-                    </a>
-                    <div id="tooltip-dribbble" role="tooltip" class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
-                        Follow us on Dribbble
-                        <div class="tooltip-arrow" data-popper-arrow></div>
-                    </div>
                 </div>
-                </footer>
+            </div>
+        </div>
+    </section>
+    <!-- add project section end -->
 
-        <!-- footer end section -->
+    <!-- compart section -->
+    {% if columns and columns2 %}
+    <form method="POST" action="/compare"
+        class="max-w-xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mt-10">
+        <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4 text-center">
+            🔎 Choisissez les clés pour comparer
+        </h3>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                🗂️ Clé dans le fichier 1 :
+            </label>
+            <select name="key1" multiple
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                {% for col in columns %}
+                <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vous pouvez sélectionner plusieurs colonnes avec
+                Ctrl / Cmd + clic.</p>
+
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                🗃️ Clé dans le fichier 2 :
+            </label>
+            <select name="key2" multiple
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                {% for col in columns2 %}
+                <option value="{{ col }}">{{ col }}</option>
+                {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Vous pouvez sélectionner plusieurs colonnes avec
+                Ctrl / Cmd + clic.</p>
+
+        </div>
+
+        <button type="submit"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+            🧮 Comparer
+        </button>
+    </form>
+    {% endif %}
+
+    <!-- compart nd section -->
+
+    <!-- table start section -->
+
+    <section class="py-10 px-4">
+        <div class="flex flex-col md:flex-row gap-4">
+
+            {% if data %}
+            <!-- First Table -->
+            <div
+                class="flex-1 flex flex-col overflow-hidden overflow-y-auto max-h-[700px] shadow-lg rounded-lg bg-white dark:bg-gray-800">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+                        📄 Données du premier fichier
+                    </h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Voici un aperçu des données extraites automatiquement.
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                {% for col in columns %}
+                                <th scope="col" class="px-6 py-3">
+                                    {{ col }}
+                                </th>
+                                {% endfor %}
+                                <th scope="col" class="px-6 py-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in data %}
+                            <tr
+                                class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                {% for col in columns %}
+                                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                    {{ row[col] }}
+                                </td>
+                                {% endfor %}
+                                <td class="flex items-center px-6 py-4">
+                                    <a href="#"
+                                        class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                                    <a href="#"
+                                        class="font-medium text-red-600 dark:text-red-500 hover:underline ms-3">Remove</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if data2 %}
+            <!-- Second Table -->
+            <div
+                class="flex-1 flex flex-col overflow-hidden overflow-y-auto max-h-[700px] shadow-lg rounded-lg bg-white dark:bg-gray-800">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
+                        📄 Données du deuxième fichier
+                    </h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Voici un aperçu des données extraites automatiquement.
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                {% for col in columns2 %}
+                                <th scope="col" class="px-6 py-3">
+                                    {{ col }}
+                                </th>
+                                {% endfor %}
+                                <th scope="col" class="px-6 py-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in data2 %}
+                            <tr
+                                class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                {% for col in columns2 %}
+                                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                    {{ row[col] }}
+                                </td>
+                                {% endfor %}
+                                <td class="flex items-center px-6 py-4">
+                                    <a href="#"
+                                        class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                                    <a href="#"
+                                        class="font-medium text-red-600 dark:text-red-500 hover:underline ms-3">Remove</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+
+
+
+
+    <!-- table end section -->
+
+
+
+
+
+
+
+    <!-- footer start section -->
+    <footer
+        class="bg-white rounded-lg shadow sm:flex sm:items-center sm:justify-between p-4 sm:p-6 xl:p-8 dark:bg-gray-800 antialiased">
+        <p class="mb-4 text-sm text-center text-gray-500 dark:text-gray-400 sm:mb-0">
+            &copy; 2024-2025 <a href="https://sof-tunisie.sofrecom.fr/fr" class="hover:underline"
+                target="_blank">Sofrecom.com</a>. All rights reserved.
+        </p>
+        <div class="flex justify-center items-center space-x-1">
+            <a href="https://www.linkedin.com/company/2747257/admin/feed/posts/" data-tooltip-target="tooltip-linkedin"
+                class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600"
+                aria-label="LinkedIn">
+                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                        d="M20.447 20.452h-3.554v-5.569c0-1.327-.024-3.037-1.852-3.037-1.854 0-2.136 1.445-2.136 2.94v5.666h-3.554V9h3.414v1.561h.049c.476-.9 1.637-1.85 3.37-1.85 3.605 0 4.271 2.373 4.271 5.456v6.285zM5.337 7.433c-1.144 0-2.069-.927-2.069-2.068 0-1.143.925-2.069 2.069-2.069s2.069.926 2.069 2.069c0 1.141-.925 2.068-2.069 2.068zm1.777 13.019H3.56V9h3.554v11.452zM22.225 0H1.771C.792 0 0 .771 0 1.722v20.555C0 23.23.792 24 1.771 24h20.451C23.2 24 24 23.23 24 22.278V1.722C24 .771 23.2 0 22.225 0z" />
+                </svg>
+                <span class="sr-only">LinkedIn</span>
+            </a>
+            <div id="tooltip-linkedin" role="tooltip"
+                class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
+                Connect with us on LinkedIn
+                <div class="tooltip-arrow" data-popper-arrow></div>
+            </div>
+
+            <a href="https://twitter.com/SofrecomTunisia" data-tooltip-target="tooltip-twitter"
+                class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
+                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 20 20">
+                    <path fill="currentColor"
+                        d="M12.186 8.672 18.743.947h-2.927l-5.005 5.9-4.44-5.9H0l7.434 9.876-6.986 8.23h2.927l5.434-6.4 4.82 6.4H20L12.186 8.672Zm-2.267 2.671L8.544 9.515 3.2 2.42h2.2l4.312 5.719 1.375 1.828 5.731 7.613h-2.2l-4.699-6.237Z" />
+                </svg>
+                <span class="sr-only">Twitter</span>
+            </a>
+            <div id="tooltip-twitter" role="tooltip"
+                class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
+                Follow us on Twitter
+                <div class="tooltip-arrow" data-popper-arrow></div>
+            </div>
+
+        </div>
+    </footer>
+
+
+    <!-- footer end section -->
 
 
 
@@ -376,7 +425,7 @@
 
 
 
-            
+
 
     <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
 </body>

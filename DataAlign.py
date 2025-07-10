@@ -1,9 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
-import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, make_response
 import pandas as pd
-import json
+import matplotlib.pyplot as plt
 from io import StringIO 
+import json
+import os
 import io
+import pdfkit
+import tempfile
 app = Flask(__name__)
 app.secret_key = '12GQSGQza&ç_çàFAFSF'
 
@@ -17,7 +20,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route("/")
 @app.route("/index")
 def index():
-    return render_template("index.html")
+    image_url = 'sofrecom.svg'
+    return render_template("index.html",image_url=image_url)
 
 # Route pour l'upload et la lecture des fichiers
 @app.route('/upload', methods=['POST'])
@@ -211,7 +215,90 @@ def download_excel():
                      as_attachment=True,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+# Function Download d'un Rapport PDF
+@app.route('/download_pdf')
+def download_pdf():
+    try:
+        df = pd.read_json(StringIO(session['data']))
+        df2 = pd.read_json(StringIO(session['data2']))
+    except Exception as e:
+        flash(f"Erreur : {e}", "error")
+        return redirect(url_for('index'))
 
+    keys1 = request.args.getlist('key1')
+    keys2 = request.args.getlist('key2')
+
+    df['_compare_key'] = df[keys1].astype(str).agg('|'.join, axis=1)
+    df2['_compare_key'] = df2[keys2].astype(str).agg('|'.join, axis=1)
+
+    merged = pd.merge(df, df2, on='_compare_key', how='outer', indicator=True)
+    ecarts1 = merged[merged['_merge'] == 'left_only'].drop(columns=['_compare_key', '_merge']).to_dict(orient='records')
+    ecarts2 = merged[merged['_merge'] == 'right_only'].drop(columns=['_compare_key', '_merge']).to_dict(orient='records')
+
+    total1 = len(df)
+    total2 = len(df2)
+    communes = len(merged[merged['_merge'] == 'both'])
+    only1 = len(ecarts1)
+    only2 = len(ecarts2)
+
+    labels = [f'{session.get("file1_name")} seulement', 
+              f'{session.get("file2_name")} seulement', 
+              'Communs']
+    sizes = [only1, only2, communes]
+    colors = ['#FF9999', '#66B3FF', '#99FF99']
+
+    plt.figure(figsize=(6, 6))
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=140)
+    plt.axis('equal')
+    chart_path = os.path.join('static', 'pie_chart.png')
+    plt.savefig(chart_path, bbox_inches='tight')
+    plt.close()
+
+    # Get absolute paths for images for wkhtmltopdf
+    logo_path_abs = os.path.abspath(os.path.join('static', 'sofrecom.png'))
+    chart_path_abs = os.path.abspath(chart_path)
+
+    rendered_html = render_template('report.html',
+    file1_name=session.get('file1_name'),
+    file2_name=session.get('file2_name'),
+    ecarts1=ecarts1,
+    ecarts2=ecarts2,
+    total1=total1,
+    total2=total2,
+    lignes_communes=communes,
+    logo_path='file:///' + logo_path_abs.replace('\\', '/'),
+    chart_path='file:///' + chart_path_abs.replace('\\', '/')
+)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.html') as f:
+        f.write(rendered_html.encode('utf-8'))
+        temp_html_path = f.name
+
+    config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+
+    try:
+        #allow acces to the path with options
+        options = { 'enable-local-file-access': '' }
+        pdf = pdfkit.from_file(temp_html_path, False, configuration=config, options=options)
+
+    except Exception as e:
+        flash(f"Erreur lors de la génération du PDF : {e}", "error")
+        return redirect(url_for('index'))
+
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=rapport_comparaison.pdf'
+
+    #Debug si l'image est d'un path vvalide ou pas 
+    print("LOGO PATH:", logo_path_abs)
+    print("CHART PATH:", chart_path_abs)
+    print("Exists?", os.path.exists(logo_path_abs), os.path.exists(chart_path_abs))
+
+
+    # Clean up temp file
+    os.remove(temp_html_path)
+
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True)

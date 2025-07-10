@@ -114,6 +114,55 @@
     </div>
 </section>
 
+        <!-- pi chart start -->
+    <section class="py-10 px-4">
+        <h2 class="text-xl font-bold mt-8 mb-4">Répartition des Données</h2>
+        <canvas id="repartitionChart" width="400" height="400"></canvas>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const ctx = document.getElementById('repartitionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                labels: [
+                    'Seulement dans {{ file1_name }}',
+                    'Seulement dans {{ file2_name }}',
+                    'Communs aux deux fichiers'
+                ],
+                datasets: [{
+                    data: [{{ pct1 }}, {{ pct2 }}, {{ pct_both }}],
+                    backgroundColor: ['#f87171', '#60a5fa', '#34d399'],  // rouge, bleu, vert
+                    borderWidth: 1
+                }]
+                },
+                options: {
+                plugins: {
+                    tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                        let label = context.label || '';
+                        let value = context.parsed || 0;
+                        return `${label}: ${value}%`;
+                        }
+                    }
+                    }
+                }
+                }
+            });
+        </script>
+        
+        <div class="mb-4 space-y-1">
+            <div><strong>Seulement dans {{ file1_name }} :</strong> {{ n1 }} lignes</div>
+            <div><strong>Seulement dans {{ file2_name }} :</strong> {{ n2 }} lignes</div>
+            <div><strong>Communs aux deux fichiers :</strong> {{ n_common }} lignes</div>
+        </div>
+
+
+
+    </section>
+
+        <!-- pi chart end -->
 
 
 

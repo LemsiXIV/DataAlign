@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import os
 import pandas as pd
+import json
 from io import StringIO 
 app = Flask(__name__)
 app.secret_key = '12GQSGQza&ç_çàFAFSF'
@@ -118,16 +119,42 @@ def compare():
     ecarts_fichier1 = merged[merged['_merge'] == 'left_only']
     ecarts_fichier2 = merged[merged['_merge'] == 'right_only']
 
+    # Filter pour communs ligne
+    communs = merged[merged['_merge'] == 'both']
+
+    # Donner pour la chart Pi Pourcentage
+    total = len(merged)
+    pct1 = round(len(ecarts_fichier1) / total * 100, 2)
+    pct2 = round(len(ecarts_fichier2) / total * 100, 2)
+    pct_both = round(len(communs) / total * 100, 2)
+
+    # totaux bruts 
+    n1 = len(ecarts_fichier1)
+    n2 = len(ecarts_fichier2)
+    n_common = len(communs)
+
+
     return render_template("compare.html",
                            key1=' + '.join(keys1),
                            key2=' + '.join(keys2),
                            ecarts1=ecarts_fichier1.to_dict(orient='records'),
                            ecarts2=ecarts_fichier2.to_dict(orient='records'),
                            file1_name=file1_name,
-                           file2_name=file2_name)
+                           file2_name=file2_name,
+                           pct1=pct1,
+                           pct2=pct2,
+                           pct_both=pct_both,
+                           n1=n1,
+                           n2=n2,
+                           n_common=n_common)
 
 
-
+@app.route("/chart")
+def chart_ex():
+        # Prepare your data in Python
+        labels = ['January', 'February', 'March', 'April', 'May']
+        data = [10, 15, 7, 20, 12]
+        return render_template('chart_ex.html', labels=json.dumps(labels), data=json.dumps(data))
 
 
 if __name__ == '__main__':

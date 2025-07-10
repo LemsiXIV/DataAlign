@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import os
 import pandas as pd
 import json
 from io import StringIO 
+import io
 app = Flask(__name__)
 app.secret_key = '12GQSGQza&ç_çàFAFSF'
 
@@ -155,8 +156,43 @@ def compare():
                            nb_df=nb_df,
                            nb_df2=nb_df2)
 
+# Function Download d'un fichier xlsx 
+@app.route('/download')
+def download_excel():
+    try:
+        df = pd.read_json(StringIO(session['data']))
+        df2 = pd.read_json(StringIO(session['data2']))
+    except Exception as e:
+        flash(f"Erreur lors du chargement des données pour export : {e}", "error")
+        return redirect(url_for('index'))
 
+    keys1 = request.args.getlist('key1')
+    keys2 = request.args.getlist('key2')
 
+    if not keys1 or not keys2:
+        flash("Clés manquantes pour la génération du fichier", "error")
+        return redirect(url_for('index'))
+
+    df['_compare_key'] = df[keys1].astype(str).agg('|'.join, axis=1)
+    df2['_compare_key'] = df2[keys2].astype(str).agg('|'.join, axis=1)
+
+    merged = pd.merge(df, df2, on='_compare_key', how='outer', indicator=True)
+
+    only1 = merged[merged['_merge'] == 'left_only']
+    only2 = merged[merged['_merge'] == 'right_only']
+    both = merged[merged['_merge'] == 'both']
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        only1.to_excel(writer, sheet_name='Seulement Fichier 1', index=False)
+        only2.to_excel(writer, sheet_name='Seulement Fichier 2', index=False)
+        both.to_excel(writer, sheet_name='Communs', index=False)
+
+    output.seek(0)
+    return send_file(output,
+                     download_name="rapport_comparaison.xlsx",
+                     as_attachment=True,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == '__main__':
     app.run(debug=True)

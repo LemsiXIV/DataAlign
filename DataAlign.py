@@ -178,21 +178,40 @@ def download_excel():
 
     merged = pd.merge(df, df2, on='_compare_key', how='outer', indicator=True)
 
-    only1 = merged[merged['_merge'] == 'left_only']
-    only2 = merged[merged['_merge'] == 'right_only']
-    both = merged[merged['_merge'] == 'both']
+    only1 = merged[merged['_merge'] == 'left_only'].drop(columns=['_compare_key', '_merge'])
+    only2 = merged[merged['_merge'] == 'right_only'].drop(columns=['_compare_key', '_merge'])
+    both = merged[merged['_merge'] == 'both'].drop(columns=['_compare_key', '_merge'])
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        only1.to_excel(writer, sheet_name='Seulement Fichier 1', index=False)
-        only2.to_excel(writer, sheet_name='Seulement Fichier 2', index=False)
-        both.to_excel(writer, sheet_name='Communs', index=False)
+        workbook = writer.book
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'middle',
+            'fg_color': '#D7E4BC',
+            'border': 1
+        })
+
+        def write_sheet(df, sheet_name):
+            df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=3)
+            worksheet = writer.sheets[sheet_name]
+            worksheet.insert_image('L2', 'static/sofrecom.png', {'x_scale': 0.5, 'y_scale': 0.5})
+            worksheet.write('C1', f"Rapport de comparaison – {sheet_name}", workbook.add_format({'bold': True, 'font_size': 14}))
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(3, col_num, value, header_format)
+
+        write_sheet(only1, "Ecarts Fichier 1")
+        write_sheet(only2, "Ecarts Fichier 2")
+        write_sheet(both, "Communs")
 
     output.seek(0)
     return send_file(output,
                      download_name="rapport_comparaison.xlsx",
                      as_attachment=True,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

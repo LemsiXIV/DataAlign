@@ -6,22 +6,30 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DataAlign</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.ico') }}">
     <link rel="stylesheet" href="{{url_for('static',filename='dist/output.css')}}">
     <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
 </head>
 
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
 
+    <!-- Header -->
+    <header class="bg-white dark:bg-gray-800 shadow p-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">DataAlign Comparaison</h1>
+        </div>
+    </header>
+
     <!-- Flash Messages -->
-    <div class="max-w-5xl mx-auto px-4 pt-6">
+    <div class="max-w-4xl mx-auto px-4 pt-6">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
-        <div class="p-4 mb-4 text-sm font-medium rounded-md shadow 
-            {% if category == 'error' %} bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400
-            {% elif category == 'success' %} bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400
-            {% else %} bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400
-            {% endif %}">
+        <div class="p-4 mb-4 rounded-lg text-sm font-medium shadow
+      {% if category == 'error' %} bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400
+      {% elif category == 'success' %} bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400
+      {% else %} bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-400
+      {% endif %}">
             {{ message }}
         </div>
         {% endfor %}
@@ -29,169 +37,166 @@
         {% endwith %}
     </div>
 
-    <main class="max-w-5xl mx-auto px-4 py-6 space-y-10">
+    <main class="max-w-6xl mx-auto px-4 py-6 space-y-8">
 
-        <!-- ÉCARTS SECTION -->
-        {% if ecarts1 or ecarts2 %}
-        <section class="bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-            <h2 class="text-2xl font-semibold mb-6">📊 Écarts trouvés</h2>
+    <main class="p-4">
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
 
-            <!-- Table 1 -->
-            {% if ecarts1 %}
-            <div class="mb-10">
-                <h3 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">
-                    📁 Données exclusives à : {{ file1_name }}
-                </h3>
-                <div class="overflow-auto max-h-[400px] border rounded-md">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-100 dark:bg-gray-700 text-left text-xs uppercase">
-                            <tr>
-                                {% for key in ecarts1[0].keys() %}
-                                <th class="px-4 py-2 border">{{ key }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in ecarts1 %}
-                            <tr class="bg-red-50 dark:bg-red-900 border-b hover:bg-red-100 dark:hover:bg-red-800">
-                                {% for val in row.values() %}
-                                <td class="px-4 py-2 border">{{ val }}</td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% else %}
-            <p class="text-green-600">✅ Aucune donnée exclusive à {{ file1_name }}.</p>
-            {% endif %}
+    <!-- Ecarts Section -->
+    {% if ecarts1 or ecarts2 %}
+   <section class="flex-1 bg-white dark:bg-gray-800 shadow-md rounded-xl p-6 w-full">
+  <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">📊 Écarts trouvés</h2>
 
-            <!-- Table 2 -->
-            {% if ecarts2 %}
-            <div class="mb-4">
-                <h3 class="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-2">
-                    📁 Données exclusives à : {{ file2_name }}
-                </h3>
-                <div class="overflow-auto max-h-[400px] border rounded-md">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-100 dark:bg-gray-700 text-left text-xs uppercase">
-                            <tr>
-                                {% for key in ecarts2[0].keys() %}
-                                <th class="px-4 py-2 border">{{ key }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in ecarts2 %}
-                            <tr class="bg-blue-50 dark:bg-blue-900 border-b hover:bg-blue-100 dark:hover:bg-blue-800">
-                                {% for val in row.values() %}
-                                <td class="px-4 py-2 border">{{ val }}</td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% else %}
-            <p class="text-green-600">✅ Aucune donnée exclusive à {{ file2_name }}.</p>
-            {% endif %}
-        </section>
-        {% endif %}
+  {% if ecarts1 %}
+  <div class="mb-4">
+    <h3 class="text-base font-semibold text-red-600 dark:text-red-400 mb-1">
+      📁 Données exclusives à : {{ file1_name }}
+    </h3>
+    <div class="overflow-x-auto w-full max-w-full rounded border border-gray-200 dark:border-gray-700 max-h-64">
+      <table class="min-w-full table-auto text-xs break-words">
+        <thead class="bg-red-100 dark:bg-red-800/50">
+          <tr>
+            {% for key in ecarts1[0].keys() %}
+            <th class="px-2 py-1 border border-gray-300 dark:border-gray-600 text-wrap whitespace-normal max-w-xs">
+              {{ key }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ecarts1 %}
+          <tr class="bg-red-50 dark:bg-red-900 border-b hover:bg-red-100 dark:hover:bg-red-800">
+            {% for val in row.values() %}
+            <td class="px-2 py-1 border border-gray-300 dark:border-gray-700 text-wrap whitespace-normal max-w-xs">
+              {{ val }}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-green-600 text-sm">✅ Aucune donnée exclusive à {{ file1_name }}.</p>
+  {% endif %}
 
-            <!-- section resume start  -->
-        <section class="bg-white dark:bg-gray-800 shadow rounded-xl p-6">
-            <!-- Résumé -->
-            <section class="space-y-4">
-                <div class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow">
-                    <h2 class="text-lg font-semibold mb-2">📌 Résumé de la comparaison</h2>
-                    <ul class="text-sm list-disc pl-5 space-y-1">
-                        <li><strong>Total lignes comparées :</strong> {{ total }}</li>
-                        <li><strong>Dans {{ file1_name }} :</strong> {{ nb_df }}</li>
-                        <li><strong>Dans {{ file2_name }} :</strong> {{ nb_df2 }}</li>
-                        <li class="text-red-600"><strong>Écarts :</strong> {{ total_ecarts }} ({{ n1 }} vs {{ n2 }})
-                        </li>
-                        <li class="text-green-600"><strong>Lignes communes :</strong> {{ n_common }}</li>
-                    </ul>
-                </div>
-                <!-- section resume end  -->
-                <!-- Actions -->
-                        <!-- button excel download -->
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <form method="get" action="{{ url_for('download_excel') }}">
-                        {% for k in key1.split(' + ') %}
-                        <input type="hidden" name="key1" value="{{ k }}">
-                        {% endfor %}
-                        {% for k in key2.split(' + ') %}
-                        <input type="hidden" name="key2" value="{{ k }}">
-                        {% endfor %}
-                        <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">
-                            📥 Télécharger Excel
-                        </button>
-                    </form>
-                            <!-- button pdf download -->
-                    <form method="get" action="{{ url_for('download_pdf') }}">
-                        {% for k in key1.split(' + ') %}
-                        <input type="hidden" name="key1" value="{{ k }}">
-                        {% endfor %}
-                        {% for k in key2.split(' + ') %}
-                        <input type="hidden" name="key2" value="{{ k }}">
-                        {% endfor %}
-                        <button type="submit"
-                            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-                            📄 Télécharger PDF
-                        </button>
-                    </form>
-                </div>
-            </section>
+  {% if ecarts2 %}
+  <div class="mb-4">
+    <h3 class="text-base font-semibold text-blue-600 dark:text-blue-400 mb-1">
+      📁 Données exclusives à : {{ file2_name }}
+    </h3>
+    <div class="overflow-x-auto w-full max-w-full rounded border border-gray-200 dark:border-gray-700 max-h-64">
+      <table class="min-w-full table-auto text-xs break-words">
+        <thead class="bg-blue-100 dark:bg-blue-800/50">
+          <tr>
+            {% for key in ecarts2[0].keys() %}
+            <th class="px-2 py-1 border border-gray-300 dark:border-gray-600 text-wrap whitespace-normal max-w-xs">
+              {{ key }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in ecarts2 %}
+          <tr class="bg-blue-50 dark:bg-blue-900 border-b hover:bg-blue-100 dark:hover:bg-blue-800">
+            {% for val in row.values() %}
+            <td class="px-2 py-1 border border-gray-300 dark:border-gray-700 text-wrap whitespace-normal max-w-xs">
+              {{ val }}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-green-600 text-sm">✅ Aucune donnée exclusive à {{ file2_name }}.</p>
+  {% endif %}
+</section>
 
-            <!-- Chart -->
-            <section class="pt-6">
-                <h2 class="text-xl font-semibold mb-4">📊 Répartition des Données</h2>
-                <canvas id="repartitionChart" width="400" height="400" class="mb-4"></canvas>
+    {% endif %}
 
-                <div class="text-sm space-y-1">
-                    <div><strong>Seulement dans {{ file1_name }}:</strong> {{ n1 }} lignes</div>
-                    <div><strong>Seulement dans {{ file2_name }}:</strong> {{ n2 }} lignes</div>
-                    <div><strong>Communs aux deux :</strong> {{ n_common }} lignes</div>
-                </div>
+    <!-- Résumé & Chart Section -->
+    <div class="flex-1 space-y-6 w-full">
 
-                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                <script>
-                    const ctx = document.getElementById('repartitionChart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'pie',
-                        data: {
-                            labels: [
-                                'Seulement dans {{ file1_name }}',
-                                'Seulement dans {{ file2_name }}',
-                                'Communs'
-                            ],
-                            datasets: [{
-                                data: [{{ pct1 }}, {{ pct2 }}, {{ pct_both }}],
-                        backgroundColor: ['#f87171', '#60a5fa', '#34d399'],
-                        borderWidth: 1
-                        }]
-                    },
-                        options: {
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        let label = context.label || '';
-                                        let value = context.parsed || 0;
-                                        return `${label}: ${value}%`;
-                                    }
-                                }
+      <!-- Résumé -->
+      <section class="bg-white dark:bg-gray-800 shadow-md rounded-xl p-6 space-y-6">
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+          <h2 class="text-lg font-semibold mb-2">📌 Résumé de la comparaison</h2>
+          <ul class="text-sm list-disc pl-5 space-y-1">
+            <li><strong>Total lignes comparées :</strong> {{ total }}</li>
+            <li><strong>Dans {{ file1_name }} :</strong> {{ nb_df }}</li>
+            <li><strong>Dans {{ file2_name }} :</strong> {{ nb_df2 }}</li>
+            <li class="text-red-600"><strong>Écarts :</strong> {{ total_ecarts }} ({{ n1 }} vs {{ n2 }})</li>
+            <li class="text-green-600"><strong>Lignes communes :</strong> {{ n_common }}</li>
+          </ul>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4">
+          <form method="get" action="{{ url_for('download_excel') }}">
+            {% for k in key1.split(' + ') %}<input type="hidden" name="key1" value="{{ k }}">{% endfor %}
+            {% for k in key2.split(' + ') %}<input type="hidden" name="key2" value="{{ k }}">{% endfor %}
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+              📥 Télécharger Excel
+            </button>
+          </form>
+
+          <form method="get" action="{{ url_for('download_pdf') }}">
+            {% for k in key1.split(' + ') %}<input type="hidden" name="key1" value="{{ k }}">{% endfor %}
+            {% for k in key2.split(' + ') %}<input type="hidden" name="key2" value="{{ k }}">{% endfor %}
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+              📄 Télécharger PDF
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Chart -->
+      <section class="bg-white dark:bg-gray-800 shadow-md rounded-xl p-6">
+        <h2 class="text-xl font-semibold mb-4">📊 Répartition des Données</h2>
+        <canvas id="repartitionChart" class="mb-4 max-w-md mx-auto"></canvas>
+        <div class="text-sm space-y-1">
+          <p><strong>Seulement dans {{ file1_name }}:</strong> {{ n1 }} lignes</p>
+          <p><strong>Seulement dans {{ file2_name }}:</strong> {{ n2 }} lignes</p>
+          <p><strong>Communs :</strong> {{ n_common }} lignes</p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+
+
+        <!-- Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const ctx = document.getElementById('repartitionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Seulement dans {{ file1_name }}', 'Seulement dans {{ file2_name }}', 'Communs'],
+                    datasets: [{
+                        data: [{{ pct1 }}, {{ pct2 }}, {{ pct_both }}],
+                backgroundColor: ['#f87171', '#60a5fa', '#34d399'],
+                borderWidth: 1
+                            }]
+                        },
+                options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return `${context.label}: ${context.parsed}%`;
                             }
                         }
                     }
-                });
-                </script>
-            </section>
-        </section>
+                }
+            }
+                                        });
+        </script>
 
     </main>
 

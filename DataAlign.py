@@ -20,6 +20,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route("/")
 @app.route("/index")
 def index():
+    
     image_url = 'sofrecom.svg'
     return render_template("index.html",image_url=image_url)
 

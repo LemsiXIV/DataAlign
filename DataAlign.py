@@ -21,8 +21,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route("/index")
 def index():
     
-    image_url = 'sofrecom.svg'
-    return render_template("index.html",image_url=image_url)
+    return render_template("index.html")
 
 # Route pour l'upload et la lecture des fichiers
 @app.route('/upload', methods=['POST'])

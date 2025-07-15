@@ -42,8 +42,8 @@ os.makedirs(ARCHIVE_FOLDER, exist_ok=True)
 @app.route("/")
 @app.route("/index")
 def index():
-    
-    return render_template("index.html")
+    projets = Projet.query.order_by(Projet.date_creation.desc()).all()
+    return render_template('index.html', projets=projets)
 
 # Route pour l'upload et la lecture des fichiers
 @app.route('/upload', methods=['POST'])
@@ -59,83 +59,67 @@ def upload_file():
         flash("Un des fichiers est vide", "error")
         return redirect(url_for('index'))
 
-    # Lire le nom du projet et la date
+    # Récupérer les valeurs
     nom_projet = request.form.get('name')
-    date_str = request.form.get('date')  # 'brand' est mal nommé → tu peux le renommer en 'date' plus tard
+    projet_existant_id = request.form.get('existing_project')
+    date_str = request.form.get('date')
+
     try:
         date_execution = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.utcnow().date()
     except Exception as e:
         flash(f"Date invalide : {e}", "error")
         return redirect(url_for('index'))
 
-    # Enregistrer les fichiers
+    # 📁 Lire les fichiers
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     filepath2 = os.path.join(app.config['UPLOAD_FOLDER'], file2.filename)
     file.save(filepath)
     file2.save(filepath2)
 
-    ext = file.filename.split('.')[-1].lower()
-
     try:
-        if ext == 'csv':
-            df = pd.read_csv(filepath)
-        elif ext in ['xls', 'xlsx']:
-            df = pd.read_excel(filepath)
-        elif ext == 'json':
-            df = pd.read_json(filepath)
-        else:
-            flash("Type de fichier non supporté", "error")
-            return redirect(url_for('index'))
+        df = pd.read_csv(filepath) if file.filename.endswith('.csv') else (
+             pd.read_excel(filepath) if file.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath))
+        df2 = pd.read_csv(filepath2) if file2.filename.endswith('.csv') else (
+              pd.read_excel(filepath2) if file2.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath2))
     except Exception as e:
-        flash(f"Erreur lors de la lecture du fichier : {e}", "error")
+        flash(f"Erreur de lecture : {e}", "error")
         return redirect(url_for('index'))
 
-    ext2 = file2.filename.split('.')[-1].lower()
-    try:
-        if ext2 == 'csv':
-            df2 = pd.read_csv(filepath2)
-        elif ext2 in ['xls', 'xlsx']:
-            df2 = pd.read_excel(filepath2)
-        elif ext2 == 'json':
-            df2 = pd.read_json(filepath2)
-        else:
-            flash("Type de fichier non supporté pour le deuxième fichier", "error")
+    # 🧠 Logique de projet
+    if projet_existant_id:
+        projet = Projet.query.get(int(projet_existant_id))
+        if not projet:
+            flash("Projet sélectionné introuvable", "error")
             return redirect(url_for('index'))
-    except Exception as e:
-        flash(f"Erreur lors de la lecture du deuxième fichier : {e}", "error")
-        return redirect(url_for('index'))
+    else:
+        if not nom_projet:
+            flash("Veuillez saisir un nom de projet ou en sélectionner un existant.", "error")
+            return redirect(url_for('index'))
 
-    # Créer un projet dans la base de données
-    projet = Projet(
-        nom_projet=nom_projet,
-        date_creation=date_execution,
-        fichier_1=file.filename,
-        fichier_2=file2.filename,
-        emplacement_source=app.config['UPLOAD_FOLDER'],
-        emplacement_archive=os.path.join(app.config['UPLOAD_FOLDER'], 'archive')  # tu peux changer selon besoin
-    )
-    db.session.add(projet)
-    db.session.commit()
+        projet = Projet(
+            nom_projet=nom_projet,
+            date_creation=date_execution,
+            fichier_1=file.filename,
+            fichier_2=file2.filename,
+            emplacement_source=app.config['UPLOAD_FOLDER'],
+            emplacement_archive=os.path.join(app.config['UPLOAD_FOLDER'], 'archive')
+        )
+        db.session.add(projet)
+        db.session.commit()
 
-    # Convertir les données en HTML pour affichage
-    data = df.to_dict(orient='records')
-    columns = df.columns.tolist()
-
-    data2 = df2.to_dict(orient='records')
-    columns2 = df2.columns.tolist()
-
+    # 🔐 Stockage session
     session['projet_id'] = projet.id
     session['data'] = df.to_json()
     session['data2'] = df2.to_json()
     session['file1_name'] = file.filename
     session['file2_name'] = file2.filename
-    return render_template('index.html', 
-                            data=data, 
-                            columns=columns, 
-                            data2=data2, 
-                            columns2=columns2,
-                            form_action='/compare')
 
+    return render_template('index.html',
+                           data=df.to_dict(orient='records'),
+                           columns=df.columns.tolist(),
+                           data2=df2.to_dict(orient='records'),
+                           columns2=df2.columns.tolist(),
+                           form_action='/compare')
 
 #function compare 
 @app.route('/compare', methods=['POST'])
@@ -153,29 +137,28 @@ def compare():
     if not keys1 or not keys2:
         flash("Veuillez sélectionner au moins une clé dans chaque fichier.", "error")
         return redirect(url_for('index'))
-
+        
     if not all(k in df.columns for k in keys1) or not all(k in df2.columns for k in keys2):
         flash("Clés invalides sélectionnées.", "error")
         return redirect(url_for('index'))
 
-    # Concaténation des clés pour comparaison
+    # Création des clés concaténées
     df['_compare_key'] = df[keys1].astype(str).agg('|'.join, axis=1)
     df2['_compare_key'] = df2[keys2].astype(str).agg('|'.join, axis=1)
 
     file1_name = session.get('file1_name', 'Fichier 1')
     file2_name = session.get('file2_name', 'Fichier 2')
 
-    merged = pd.merge(df, df2, left_on='_compare_key', right_on='_compare_key', how='outer', indicator=True)
+    merged = pd.merge(df, df2, on='_compare_key', how='outer', indicator=True)
 
-    # Séparation des différences
     ecarts_fichier1 = merged[merged['_merge'] == 'left_only']
     ecarts_fichier2 = merged[merged['_merge'] == 'right_only']
     communs = merged[merged['_merge'] == 'both']
 
     total = len(merged)
-    pct1 = round(len(ecarts_fichier1) / total * 100, 2) if total else 0
-    pct2 = round(len(ecarts_fichier2) / total * 100, 2) if total else 0
-    pct_both = round(len(communs) / total * 100, 2) if total else 0
+    pct1 = round(len(ecarts_fichier1) / total * 100, 2)
+    pct2 = round(len(ecarts_fichier2) / total * 100, 2)
+    pct_both = round(len(communs) / total * 100, 2)
 
     n1 = len(ecarts_fichier1)
     n2 = len(ecarts_fichier2)
@@ -184,10 +167,14 @@ def compare():
     nb_df = len(df)
     nb_df2 = len(df2)
 
-    # À remplacer par une récupération dynamique depuis le formulaire ou la session
-    projet_id = session.get('projet_id', 1)
+    # 🔐 Récupération dynamique du projet_id depuis la session
+    projet_id = session.get("projet_id")
 
-    # 👉 Sauvegarde dans Configurations_Cles_Composees
+    if not projet_id:
+        flash("Aucun projet sélectionné. Veuillez sélectionner un projet avant de comparer.", "error")
+        return redirect(url_for('index'))
+
+    # 🔄 Sauvegarde des clés utilisées dans Configurations_Cles_Composees
     config1 = ConfigurationCleComposee(
         projet_id=projet_id,
         fichier='fichier1',
@@ -198,18 +185,18 @@ def compare():
         fichier='fichier2',
         champs_concatenes=','.join(keys2)
     )
-    db.session.add(config1)
-    db.session.add(config2)
+    db.session.add_all([config1, config2])
 
-    # 👉 Sauvegarde dans Statistiques_Ecarts
+    # 📊 Sauvegarde des stats dans Statistiques_Ecarts
     stat = StatistiqueEcart(
         projet_id=projet_id,
         nb_ecarts_uniquement_fichier1=n1,
         nb_ecarts_uniquement_fichier2=n2,
         nb_ecarts_communs=n_common,
-        date_execution=datetime.utcnow()
+        date_execution=datetime.now()
     )
     db.session.add(stat)
+
     db.session.commit()
 
     return render_template("compare.html",
@@ -229,6 +216,7 @@ def compare():
                            total_ecarts=total_ecarts,
                            nb_df=nb_df,
                            nb_df2=nb_df2)
+
     
 
 # Function Download d'un fichier xlsx 

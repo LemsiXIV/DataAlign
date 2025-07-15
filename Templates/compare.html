@@ -67,6 +67,9 @@
   <header class="bg-white  mt-6 dark:bg-gray-800 shadow p-4">
     <div class="max-w-6xl mx-auto text-center">
       <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">DataAlign Comparaison</h1>
+      {% if nom_projet %}
+      <p class="text-sm text-gray-600 dark:text-gray-300">Projet sélectionné : <strong>{{ nom_projet }}</strong></p>
+      {% endif %}
     </div>
   </header>
 

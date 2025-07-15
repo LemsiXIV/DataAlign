@@ -153,12 +153,12 @@ def compare():
     if not keys1 or not keys2:
         flash("Veuillez sélectionner au moins une clé dans chaque fichier.", "error")
         return redirect(url_for('index'))
-        
+
     if not all(k in df.columns for k in keys1) or not all(k in df2.columns for k in keys2):
         flash("Clés invalides sélectionnées.", "error")
         return redirect(url_for('index'))
 
-    # Create concatenated keys for comparison
+    # Concaténation des clés pour comparaison
     df['_compare_key'] = df[keys1].astype(str).agg('|'.join, axis=1)
     df2['_compare_key'] = df2[keys2].astype(str).agg('|'.join, axis=1)
 
@@ -167,21 +167,16 @@ def compare():
 
     merged = pd.merge(df, df2, left_on='_compare_key', right_on='_compare_key', how='outer', indicator=True)
 
-
-    # Filter differences using indicator
+    # Séparation des différences
     ecarts_fichier1 = merged[merged['_merge'] == 'left_only']
     ecarts_fichier2 = merged[merged['_merge'] == 'right_only']
-
-    # Filter pour communs ligne
     communs = merged[merged['_merge'] == 'both']
 
-    # Donner pour la chart Pi Pourcentage
     total = len(merged)
-    pct1 = round(len(ecarts_fichier1) / total * 100, 2)
-    pct2 = round(len(ecarts_fichier2) / total * 100, 2)
-    pct_both = round(len(communs) / total * 100, 2)
+    pct1 = round(len(ecarts_fichier1) / total * 100, 2) if total else 0
+    pct2 = round(len(ecarts_fichier2) / total * 100, 2) if total else 0
+    pct_both = round(len(communs) / total * 100, 2) if total else 0
 
-    # totaux bruts 
     n1 = len(ecarts_fichier1)
     n2 = len(ecarts_fichier2)
     n_common = len(communs)
@@ -189,18 +184,33 @@ def compare():
     nb_df = len(df)
     nb_df2 = len(df2)
 
-    # Stocker les stats dans la base
-    projet_id = 1  # à récupérer dynamiquement plus tard
+    # À remplacer par une récupération dynamique depuis le formulaire ou la session
+    projet_id = session.get('projet_id', 1)
 
+    # 👉 Sauvegarde dans Configurations_Cles_Composees
+    config1 = ConfigurationCleComposee(
+        projet_id=projet_id,
+        fichier='fichier1',
+        champs_concatenes=','.join(keys1)
+    )
+    config2 = ConfigurationCleComposee(
+        projet_id=projet_id,
+        fichier='fichier2',
+        champs_concatenes=','.join(keys2)
+    )
+    db.session.add(config1)
+    db.session.add(config2)
+
+    # 👉 Sauvegarde dans Statistiques_Ecarts
     stat = StatistiqueEcart(
         projet_id=projet_id,
         nb_ecarts_uniquement_fichier1=n1,
         nb_ecarts_uniquement_fichier2=n2,
-        nb_ecarts_communs=n_common
+        nb_ecarts_communs=n_common,
+        date_execution=datetime.utcnow()
     )
     db.session.add(stat)
     db.session.commit()
-
 
     return render_template("compare.html",
                            key1=' + '.join(keys1),
@@ -219,6 +229,7 @@ def compare():
                            total_ecarts=total_ecarts,
                            nb_df=nb_df,
                            nb_df2=nb_df2)
+    
 
 # Function Download d'un fichier xlsx 
 @app.route('/download')

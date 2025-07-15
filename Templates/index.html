@@ -34,11 +34,13 @@
     <nav class="bg-white border-gray-200 px-2 sm:px-4 py-2.5 rounded-sm dark:bg-gray-900">
         <div class="container flex flex-wrap items-center justify-between mx-auto">
             <a href="{{ url_for('index') }}" class="flex items-center">
-                <img src="{{ url_for('static', filename='sofrecom.svg') }}" style="height:100px;" class="w-48 mr-3 sm:h-28" alt="DataAlign Logo">
+                <img src="{{ url_for('static', filename='sofrecom.svg') }}" style="height:100px;"
+                    class="w-48 mr-3 sm:h-28" alt="DataAlign Logo">
                 <span class="self-center text-xl font-semibold whitespace-nowrap dark:text-white">DataAlign</span>
             </a>
             <div class="flex md:order-2">
-                <button  id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal" type="button"
+                <button id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal"
+                    type="button"
                     class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-3 md:mr-0 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Get
                     started</button>
                 <button data-collapse-toggle="navbar-cta" type="button"
@@ -91,7 +93,7 @@
                     stack.</p>
                 <a id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal" href="#"
                     class="inline-flex items-center justify-center px-5 py-3 mr-3 text-base font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900">
-                    Get started
+                    Create a Project
                     <svg class="w-5 h-5 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20"
                         xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd"
@@ -99,10 +101,11 @@
                             clip-rule="evenodd"></path>
                     </svg>
                 </a>
-                <a href="#"
+                <a href="#" data-modal-target="Fast_Test-modal" data-modal-toggle="Fast_Test-modal"
                     class="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800">
-                    Speak to Sales
+                    Fast Test
                 </a>
+
             </div>
             <div class="hidden lg:mt-0 lg:col-span-5 lg:flex">
                 <img src="https://flowbite.s3.amazonaws.com/blocks/marketing-ui/hero/phone-mockup.png" alt="mockup">
@@ -110,6 +113,51 @@
         </div>
     </section>
     <!-- hero end section -->
+    <!-- pop-up content start -->
+            <div id="Fast_Test-modal" tabindex="-1" aria-hidden="true"
+                class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                <div class="relative p-4 w-full max-w-md max-h-full">
+                    <!-- Modal content -->
+                    <div class="relative bg-white rounded-lg shadow-sm dark:bg-gray-700">
+                        <!-- Modal header -->
+                        <div
+                            class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600 border-gray-200">
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                                Fast Test
+                            </h3>
+                            <button type="button"
+                                class="end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                                data-modal-hide="Fast_Test-modal">
+                                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 14 14">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+                                </svg>
+                                <span class="sr-only">Close modal</span>
+                            </button>
+                        </div>
+                        <!-- Modal body -->
+                        <div class="p-4 md:p-5">
+                            <form class="space-y-4" action="/fast_test" method="POST" enctype="multipart/form-data" >
+                                <div>
+                                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="user_avatar">Upload file 1 :</label>
+                                    <input class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_fast_upload" id="file_fast_upload" name="file_fast_upload" type="file">
+                                    <div class="mt-1 text-sm text-gray-500 dark:text-gray-300" id="user_avatar_help">Veuillez choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
+                                </div>
+                                <div>
+                                    <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="user_avatar">Upload file 2 :</label>
+                                    <input class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_fast_upload2" id="file_fast_upload2" name="file_fast_upload2" type="file">
+                                    <div class="mt-1 text-sm text-gray-500 dark:text-gray-300" id="user_avatar_help">Veuillez choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
+                                </div>
+                                <button type="submit"
+                                    class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Compaire</button>
+                                
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    <!-- pop-up content start -->
 
     <!-- add project section -->
     <section class="py-10 px-4">
@@ -151,7 +199,7 @@
                             <div>
                                 <label for="Date"
                                     class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Date</label>
-                                <input type="date" name="brand" id="brand"
+                                <input type="date" name="date" id="date"
                                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                                     placeholder="Date" required="">
                             </div>
@@ -210,7 +258,7 @@
 
     <!-- compart section -->
     {% if columns and columns2 %}
-    <form method="POST" action="/compare"
+    <form method="POST" action="{{ form_action }}"
         class="max-w-xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mt-10">
         <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4 text-center">
             🔎 Choisissez les clés pour comparer

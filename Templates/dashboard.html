@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+    <h1>Tableau de bord – Projets</h1>
+
+    <h2>📁 Projets</h2>
+    <ul>
+        {% for projet in projets %}
+            <li>
+                <strong>{{ projet.nom_projet }}</strong><br>
+                📄 Fichier 1 : {{ projet.fichier_1 }}<br>
+                📄 Fichier 2 : {{ projet.fichier_2 }}
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2>📊 Dernières comparaisons</h2>
+    <table border="1">
+        <tr>
+            <th>Projet</th>
+            <th>Fichier 1 uniquement</th>
+            <th>Fichier 2 uniquement</th>
+            <th>Communs</th>
+            <th>Date</th>
+        </tr>
+        {% for stat in stats %}
+        <tr>
+            <td>{{ stat.projet.nom_projet }}</td>
+            <td>{{ stat.nb_ecarts_uniquement_fichier1 }}</td>
+            <td>{{ stat.nb_ecarts_uniquement_fichier2 }}</td>
+            <td>{{ stat.nb_ecarts_communs }}</td>
+            <td>{{ stat.date_execution.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

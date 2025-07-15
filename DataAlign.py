@@ -361,37 +361,12 @@ def download_pdf():
     return response
 
 
-@app.route('/projets/nouveau', methods=['GET', 'POST'])
-def nouveau_projet():
-    if request.method == 'POST':
-        nom = request.form['nom_projet']
-        fichier1 = request.form['fichier_1']
-        fichier2 = request.form['fichier_2']
-        source = request.form['emplacement_source']
-        archive = request.form['emplacement_archive']
 
-        projet = Projet(
-            nom_projet=nom,
-            fichier_1=fichier1,
-            fichier_2=fichier2,
-            emplacement_source=source,
-            emplacement_archive=archive
-        )
-        db.session.add(projet)
-        db.session.commit()
-
-        flash("Projet ajouté avec succès", "success")
-        return redirect(url_for('index'))
-
-    return render_template('nouveau_projet.html')
-
-
-
-@app.route('/dashboard')
+@app.route('/Historique')
 def dashboard():
     projets = Projet.query.all()
     stats = StatistiqueEcart.query.all()
-    return render_template('dashboard.html', projets=projets, stats=stats)
+    return render_template('Historique.html', projets=projets, stats=stats)
 
 
 #fast test without db test 
@@ -501,19 +476,6 @@ def Fast_Compare():
     total_ecarts = n1 + n2
     nb_df = len(df)
     nb_df2 = len(df2)
-
-    # Stocker les stats dans la base
-    projet_id = 1  # à récupérer dynamiquement plus tard
-
-    stat = StatistiqueEcart(
-        projet_id=projet_id,
-        nb_ecarts_uniquement_fichier1=n1,
-        nb_ecarts_uniquement_fichier2=n2,
-        nb_ecarts_communs=n_common
-    )
-    db.session.add(stat)
-    db.session.commit()
-
 
     return render_template("compare.html",
                            key1=' + '.join(keys1),

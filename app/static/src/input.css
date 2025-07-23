@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for DataAlign */
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200;
+  }
+  
+  .btn-success {
+    @apply bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200;
+  }
+  
+  .btn-warning {
+    @apply bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200;
+  }
+  
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6;
+  }
+  
+  .card-header {
+    @apply border-b border-gray-200 dark:border-gray-700 pb-4 mb-4;
+  }
+  
+  .table-responsive {
+    @apply overflow-x-auto shadow-lg rounded-lg;
+  }
+  
+  .table-dataalign {
+    @apply w-full text-sm text-left text-gray-500 dark:text-gray-400;
+  }
+  
+  .table-dataalign thead {
+    @apply text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400;
+  }
+  
+  .table-dataalign tbody tr {
+    @apply bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600;
+  }
+  
+  .table-dataalign th,
+  .table-dataalign td {
+    @apply px-6 py-4;
+  }
+  
+  .alert {
+    @apply p-4 mb-4 text-sm rounded-lg;
+  }
+  
+  .alert-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-200 dark:text-green-800;
+  }
+  
+  .alert-error {
+    @apply bg-red-100 text-red-800 dark:bg-red-200 dark:text-red-800;
+  }
+  
+  .alert-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-200 dark:text-yellow-800;
+  }
+  
+  .alert-info {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-200 dark:text-blue-800;
+  }
+  
+  .form-input {
+    @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+  }
+  
+  .form-select {
+    @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+  }
+  
+  .form-file {
+    @apply block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400;
+  }
+  
+  .modal {
+    @apply hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-modal md:h-full;
+  }
+  
+  .modal-content {
+    @apply relative p-4 bg-white rounded-lg shadow dark:bg-gray-800 sm:p-5;
+  }
+  
+  .navbar {
+    @apply bg-white border-gray-200 px-2 sm:px-4 py-2.5 rounded dark:bg-gray-900;
+  }
+  
+  .sidebar {
+    @apply fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform -translate-x-full bg-white border-r border-gray-200 sm:translate-x-0 dark:bg-gray-800 dark:border-gray-700;
+  }
+}
+
+/* Animation pour les statistiques */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInUp 0.5s ease-out;
+}
+
+/* Couleurs pour les graphiques */
+.chart-primary {
+  background-color: #3b82f6;
+}
+
+.chart-success {
+  background-color: #22c55e;
+}
+
+.chart-warning {
+  background-color: #f59e0b;
+}
+
+.chart-danger {
+  background-color: #ef4444;
+}
+
+/* Styles pour les tableaux de comparaison */
+.comparison-identical {
+  @apply bg-green-50 dark:bg-green-900;
+}
+
+.comparison-different {
+  @apply bg-red-50 dark:bg-red-900;
+}
+
+.comparison-missing {
+  @apply bg-yellow-50 dark:bg-yellow-900;
+}
+
+/* Loader/Spinner */
+.loader {
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+  .table-responsive {
+    @apply overflow-x-scroll;
+  }
+  
+  .modal-content {
+    @apply mx-4;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-after: always;
+  }
+}

@@ -1,27 +1,38 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Nouveau Projet</title>
-</head>
-<body>
-    <h2>Ajouter un nouveau projet</h2>
-    <form method="POST">
-        <label>Nom du projet</label><br>
-        <input type="text" name="nom_projet" required><br><br>
+{% extends 'base.html' %}
 
-        <label>Nom du fichier 1 (ex: ventes.csv)</label><br>
-        <input type="text" name="fichier_1"><br><br>
+{% block title %}DataAlign - Nouveau Projet{% endblock %}
 
-        <label>Nom du fichier 2 (ex: stock.csv)</label><br>
-        <input type="text" name="fichier_2"><br><br>
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-2xl font-bold mb-6 text-center">Ajouter un nouveau projet</h2>
+    <form method="POST" class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nom du projet</label>
+            <input type="text" name="nom_projet" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
 
-        <label>Dossier source</label><br>
-        <input type="text" name="emplacement_source"><br><br>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nom du fichier 1 (ex: ventes.csv)</label>
+            <input type="text" name="fichier_1" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
 
-        <label>Dossier archive</label><br>
-        <input type="text" name="emplacement_archive"><br><br>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Nom du fichier 2 (ex: stock.csv)</label>
+            <input type="text" name="fichier_2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
 
-        <button type="submit">Créer le projet</button>
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Dossier source</label>
+            <input type="text" name="emplacement_source" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Dossier archive</label>
+            <input type="text" name="emplacement_archive" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Créer le projet</button>
     </form>
-</body>
+</div>
+{% endblock %}
 </html>

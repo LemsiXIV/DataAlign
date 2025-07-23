@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DataAlign{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 text-center border-b-2 border-blue-500 pb-4">
+                📊 Tableau de Bord - Gestion des Projets
+            </h1>
+        </div>
+
+        <!-- Projects Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                📁 Arborescence des Projets
+            </h2>
+            
+            <div class="space-y-4">
+                {% if projets_tree %}
+                    {% for nom_projet, sous_traitements in projets_tree.items() %}
+                    <div class="border border-gray-200 rounded-lg">
+                        <!-- Project Header -->
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 cursor-pointer hover:bg-blue-100 transition-colors duration-200"
+                             onclick="toggleSubTreatments('{{ nom_projet }}')">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                        📋 {{ nom_projet }}
+                                    </h3>
+                                    <p class="text-sm text-gray-600 mt-1">
+                                        {{ sous_traitements|length }} traitement(s)
+                                    </p>
+                                </div>
+                                <svg class="w-6 h-6 text-gray-500 transform transition-transform duration-200" 
+                                     id="icon-{{ nom_projet }}" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <!-- Sub Treatments -->
+                        <div class="hidden p-4 space-y-2" id="sub-{{ nom_projet }}">
+                            {% for traitement in sous_traitements %}
+                            <div class="bg-white border border-gray-200 rounded-md p-3 cursor-pointer hover:bg-gray-50 hover:shadow-md transition-all duration-200 border-l-4 border-red-400"
+                                 onclick="showProjectDetails({{ traitement.id }})">
+                                <div class="font-medium text-red-600 text-sm mb-1">
+                                    📅 {{ traitement.formatted_date }}
+                                </div>
+                                <div class="text-xs text-gray-500 space-y-1">
+                                    <div>📄 {{ traitement.fichier_1 or 'Fichier 1 non défini' }}</div>
+                                    <div>📄 {{ traitement.fichier_2 or 'Fichier 2 non défini' }}</div>
+                                </div>
+                                <div class="text-xs text-blue-600 mt-2">
+                                    🗂️ ID: {{ traitement.id }} | Archive: {{ traitement.emplacement_archive or 'Non défini' }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-8">
+                        <p class="text-gray-500">Aucun projet trouvé</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                📊 Statistiques des Comparaisons
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Projet</th>
+                            <th scope="col" class="px-6 py-3">Fichier 1 uniquement</th>
+                            <th scope="col" class="px-6 py-3">Fichier 2 uniquement</th>
+                            <th scope="col" class="px-6 py-3">Communs</th>
+                            <th scope="col" class="px-6 py-3">Date d'exécution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in stats %}
+                        <tr class="bg-white border-b hover:bg-gray-50">
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ stat.projet.nom_projet }}</td>
+                            <td class="px-6 py-4">{{ stat.nb_ecarts_uniquement_fichier1 }}</td>
+                            <td class="px-6 py-4">{{ stat.nb_ecarts_uniquement_fichier2 }}</td>
+                            <td class="px-6 py-4">{{ stat.nb_ecarts_communs }}</td>
+                            <td class="px-6 py-4">{{ stat.date_execution.strftime('%d/%m/%Y %H:%M') if stat.date_execution else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="projectModal" tabindex="-1" aria-hidden="true" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-50" aria-hidden="true"></div>
+            
+            <!-- Modal panel -->
+            <div class="inline-block w-full max-w-2xl p-6 my-8 text-left align-middle transition-all transform bg-white shadow-xl rounded-lg">
+                <!-- Modal header -->
+                <div class="flex items-start justify-between pb-4 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900" id="modalTitle">
+                        Détails du Projet
+                    </h3>
+                    <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center transition-colors" onclick="closeModal()">
+                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                        </svg>
+                        <span class="sr-only">Fermer modal</span>
+                    </button>
+                </div>
+                <!-- Modal body -->
+                <div class="py-6">
+                    <div id="modalInfo" class="space-y-4">
+                        <!-- Le contenu sera injecté ici via JavaScript -->
+                    </div>
+                </div>
+                <!-- Modal footer -->
+                <div id="modalActions" class="flex items-center justify-center space-x-3 pt-4 border-t border-gray-200">
+                    <!-- Les boutons d'action seront injectés ici -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSubTreatments(projectName) {
+            const subList = document.getElementById('sub-' + projectName);
+            const icon = document.getElementById('icon-' + projectName);
+            
+            if (subList.classList.contains('hidden')) {
+                subList.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                subList.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+        
+        function showProjectDetails(projectId) {
+            fetch(`/projet-details/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modalTitle').textContent = `Projet: ${data.nom_projet}`;
+                    
+                    const modalInfo = document.getElementById('modalInfo');
+                    modalInfo.innerHTML = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-gray-800 mb-2">Informations générales</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="font-medium text-gray-600">Nom du projet:</span>
+                                        <span class="text-gray-800">${data.nom_projet}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="font-medium text-gray-600">Date de création:</span>
+                                        <span class="text-gray-800">${data.date_creation}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-semibold text-gray-800 mb-2">Fichiers traités</h4>
+                                <div class="space-y-2 text-sm">
+                                    <div>
+                                        <span class="font-medium text-gray-600">Fichier 1:</span>
+                                        <div class="text-gray-800 break-all">${data.fichier_1}</div>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-600">Fichier 2:</span>
+                                        <div class="text-gray-800 break-all">${data.fichier_2}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">Emplacement</h4>
+                            <p class="text-sm text-gray-600 break-all">${data.emplacement_archive}</p>
+                        </div>
+                    `;
+                    
+                    const modalActions = document.getElementById('modalActions');
+                    let actionsHtml = '';
+                    
+                    // Afficher le bouton ZIP seulement s'il y a des fichiers à télécharger
+                    if (data.has_files_to_download) {
+                        actionsHtml += `<a href="/download-project-zip/${projectId}" class="text-white bg-yellow-400 hover:bg-yellow-500 focus:ring-4 focus:outline-none focus:ring-yellow-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                            📦 Télécharger ZIP
+                        </a>`;
+                    }
+                    
+                    // Afficher le bouton Excel seulement si le fichier existe
+                    if (data.has_excel) {
+                        actionsHtml += `<a href="/download-report-file/${projectId}/rapport_comparaison.xlsx" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                            📊 Télécharger Excel
+                        </a>`;
+                    }
+                    
+                    // Afficher le bouton PDF seulement si le fichier existe
+                    if (data.has_pdf) {
+                        actionsHtml += `<a href="/download-report-file/${projectId}/rapport_comparaison.pdf" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                            📄 Télécharger PDF
+                        </a>`;
+                    }
+                    
+                    // Si aucun fichier n'est disponible, afficher un message
+                    if (!data.has_files_to_download && !data.has_excel && !data.has_pdf) {
+                        actionsHtml = `<div class="text-gray-500 text-sm text-center py-4">
+                            <p>🚫 Aucun fichier disponible pour le téléchargement</p>
+                        </div>`;
+                    }
+                    
+                    modalActions.innerHTML = actionsHtml;
+                    
+                    document.getElementById('projectModal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors du chargement des détails du projet');
+                });
+        }
+        
+        function closeModal() {
+            document.getElementById('projectModal').classList.add('hidden');
+        }
+        
+        // Fermer la modal si on clique en dehors
+        window.onclick = function(event) {
+            const modal = document.getElementById('projectModal');
+            if (event.target === modal) {
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% endblock %}

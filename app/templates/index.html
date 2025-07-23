@@ -1,86 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DataAlign</title>
-    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.ico') }}">
-    <link rel="stylesheet" href="{{url_for('static',filename='dist/output.css')}}">
-</head>
+{% block title %}DataAlign - Home{% endblock %}
 
-<body>
-
-    <div class="py-4 px-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="p-4 mb-4 text-sm rounded-lg
-                        {% if category == 'error' %} bg-red-100 text-red-800
-                        {% elif category == 'success' %} bg-green-100 text-green-800
-                        {% else %} bg-blue-100 text-blue-800
-                        {% endif %}">
-            {{ message }}
-        </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
-    </div>
-
-
-
-    <!-- navbar Start section -->
-    <nav class="bg-white border-gray-200 px-2 sm:px-4 py-2.5 rounded-sm dark:bg-gray-900">
-        <div class="container flex flex-wrap items-center justify-between mx-auto">
-            <a href="{{ url_for('projets.index') }}" class="flex items-center">
-                <img src="{{ url_for('static', filename='sofrecom.svg') }}" style="height:100px;"
-                    class="w-48 mr-3 sm:h-28" alt="DataAlign Logo">
-                <span class="self-center text-xl font-semibold whitespace-nowrap dark:text-white">DataAlign</span>
-            </a>
-            <div class="flex md:order-2">
-                <button id="defaultModalButton" data-modal-target="defaultModal" data-modal-toggle="defaultModal"
-                    type="button"
-                    class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-3 md:mr-0 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Get
-                    started</button>
-                <button data-collapse-toggle="navbar-cta" type="button"
-                    class="inline-flex items-center p-2 text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-                    aria-controls="navbar-cta" aria-expanded="false">
-                    <span class="sr-only">Open main menu</span>
-                    <svg class="w-6 h-6" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd"
-                            d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                            clip-rule="evenodd"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-cta">
-                <ul
-                    class="flex flex-col p-4 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:mt-0 md:text-sm md:font-medium md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
-                    <li>
-                        <a href="#"
-                            class="block py-2 pl-3 pr-4 text-white bg-blue-700 rounded-sm md:bg-transparent md:text-blue-700 md:p-0 dark:text-white"
-                            aria-current="page">Home</a>
-                    </li>
-                    <li>
-                        <a href="#"
-                            class="block py-2 pl-3 pr-4 text-gray-700 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-white dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">About</a>
-                    </li>
-                    <li>
-                        <a href="#"
-                            class="block py-2 pl-3 pr-4 text-gray-700 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-white dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Services</a>
-                    </li>
-                    <li>
-                        <a href="#"
-                            class="block py-2 pl-3 pr-4 text-gray-700 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-white dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700">Contact</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    <!-- navbar End section -->
-
+{% block content %}
     <!-- hero start section -->
     <section class="bg-white dark:bg-gray-900">
         <div class="grid max-w-screen-xl px-4 py-8 mx-auto lg:gap-8 xl:gap-0 lg:py-16 lg:grid-cols-12">
@@ -445,89 +367,27 @@
     </section>
 
 
+{% endblock %}
 
-
-
-    <!-- table end section -->
-
-
-
+{% block modals %}
 
 
 
 
-    <!-- footer start section -->
-    <footer
-        class="bg-white rounded-lg shadow sm:flex sm:items-center sm:justify-between p-4 sm:p-6 xl:p-8 dark:bg-gray-800 antialiased">
-        <p class="mb-4 text-sm text-center text-gray-500 dark:text-gray-400 sm:mb-0">
-            &copy; 2024-2025 <a href="https://sof-tunisie.sofrecom.fr/fr" class="hover:underline"
-                target="_blank">Sofrecom.com</a>. All rights reserved.
-        </p>
-        <div class="flex justify-center items-center space-x-1">
-            <a href="https://www.linkedin.com/company/2747257/admin/feed/posts/" data-tooltip-target="tooltip-linkedin"
-                class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600"
-                aria-label="LinkedIn">
-                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-                    viewBox="0 0 24 24">
-                    <path
-                        d="M20.447 20.452h-3.554v-5.569c0-1.327-.024-3.037-1.852-3.037-1.854 0-2.136 1.445-2.136 2.94v5.666h-3.554V9h3.414v1.561h.049c.476-.9 1.637-1.85 3.37-1.85 3.605 0 4.271 2.373 4.271 5.456v6.285zM5.337 7.433c-1.144 0-2.069-.927-2.069-2.068 0-1.143.925-2.069 2.069-2.069s2.069.926 2.069 2.069c0 1.141-.925 2.068-2.069 2.068zm1.777 13.019H3.56V9h3.554v11.452zM22.225 0H1.771C.792 0 0 .771 0 1.722v20.555C0 23.23.792 24 1.771 24h20.451C23.2 24 24 23.23 24 22.278V1.722C24 .771 23.2 0 22.225 0z" />
-                </svg>
-                <span class="sr-only">LinkedIn</span>
-            </a>
-            <div id="tooltip-linkedin" role="tooltip"
-                class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
-                Connect with us on LinkedIn
-                <div class="tooltip-arrow" data-popper-arrow></div>
-            </div>
+{% endblock %}
 
-            <a href="https://twitter.com/SofrecomTunisia" data-tooltip-target="tooltip-twitter"
-                class="inline-flex justify-center p-2 text-gray-500 rounded-lg cursor-pointer dark:text-gray-400 dark:hover:text-white hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-600">
-                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 20 20">
-                    <path fill="currentColor"
-                        d="M12.186 8.672 18.743.947h-2.927l-5.005 5.9-4.44-5.9H0l7.434 9.876-6.986 8.23h2.927l5.434-6.4 4.82 6.4H20L12.186 8.672Zm-2.267 2.671L8.544 9.515 3.2 2.42h2.2l4.312 5.719 1.375 1.828 5.731 7.613h-2.2l-4.699-6.237Z" />
-                </svg>
-                <span class="sr-only">Twitter</span>
-            </a>
-            <div id="tooltip-twitter" role="tooltip"
-                class="inline-block absolute invisible z-10 py-2 px-3 text-sm font-medium text-white bg-gray-900 rounded-lg shadow-sm opacity-0 transition-opacity duration-300 tooltip dark:bg-gray-700">
-                Follow us on Twitter
-                <div class="tooltip-arrow" data-popper-arrow></div>
-            </div>
+{% block extra_scripts %}
+<script>
+    const selectProjet = document.getElementById('existing_project');
+    const nomProjetInput = document.getElementById('name');
 
-        </div>
-    </footer>
-
-
-    <!-- footer end section -->
-
-
-
-
-
-
-
-
-
-
-
-
-    <!-- ✅ Script JS -->
-    <script>
-        const selectProjet = document.getElementById('existing_project');
-        const nomProjetInput = document.getElementById('name');
-
-        selectProjet.addEventListener('change', () => {
-            if (selectProjet.value !== '') {
-                nomProjetInput.disabled = true;
-                nomProjetInput.value = ''; // optionnel : vide le champ si un projet est sélectionné
-            } else {
-                nomProjetInput.disabled = false;
-            }
-        });
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
-</body>
-
-</html>
+    selectProjet.addEventListener('change', () => {
+        if (selectProjet.value !== '') {
+            nomProjetInput.disabled = true;
+            nomProjetInput.value = ''; // optionnel : vide le champ si un projet est sélectionné
+        } else {
+            nomProjetInput.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

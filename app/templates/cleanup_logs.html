@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}DataAlign - Logs de Nettoyage{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 text-center border-b-2 border-blue-500 pb-4">
+            📋 Logs de Nettoyage Automatique
+        </h1>
+        <p class="text-center text-gray-600 mt-2">Historique des opérations de nettoyage des fichiers temporaires</p>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex flex-wrap gap-4 items-center justify-center">
+            <a href="{{ url_for('projets.cleanup_logs') }}" 
+               class="px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                      {% if not request.args.get('status') %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                Tous les logs
+            </a>
+            <a href="{{ url_for('projets.cleanup_logs', status='succès') }}" 
+               class="px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                      {% if request.args.get('status') == 'succès' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                ✅ Succès
+            </a>
+            <a href="{{ url_for('projets.cleanup_logs', status='échec') }}" 
+               class="px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                      {% if request.args.get('status') == 'échec' %}bg-red-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                ❌ Échecs
+            </a>
+        </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="space-y-4">
+        {% if logs.items %}
+            {% for log in logs.items %}
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 
+                        {% if log.statut == 'succès' %}border-green-500{% else %}border-red-500{% endif %}">
+                
+                <!-- Header du log -->
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                     {% if log.statut == 'succès' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {% if log.statut == 'succès' %}✅ Succès{% else %}❌ Échec{% endif %}
+                        </span>
+                        <span class="text-sm text-gray-500">
+                            ID: {{ log.id }}
+                        </span>
+                    </div>
+                    <span class="text-sm text-gray-500">
+                        {{ log.date_execution.strftime('%d/%m/%Y à %H:%M:%S') }}
+                    </span>
+                </div>
+
+                <!-- Message du log -->
+                <div class="bg-gray-50 rounded-md p-4">
+                    <pre class="text-sm text-gray-700 whitespace-pre-wrap font-mono">{{ log.message }}</pre>
+                </div>
+
+                <!-- Footer avec infos supplémentaires -->
+                <div class="mt-3 flex items-center justify-between text-xs text-gray-500">
+                    <span>
+                        {% if log.projet_id %}
+                            Projet ID: {{ log.projet_id }}
+                        {% else %}
+                            Tâche système
+                        {% endif %}
+                    </span>
+                    <span>
+                        {{ (log.date_execution.replace(tzinfo=None) - log.date_execution.replace(tzinfo=None)).total_seconds() // 3600 }}h ago
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Pagination -->
+            {% if logs.pages > 1 %}
+            <div class="flex justify-center mt-8">
+                <nav class="flex items-center space-x-2">
+                    {% if logs.has_prev %}
+                        <a href="{{ url_for('projets.cleanup_logs', page=logs.prev_num, status=request.args.get('status')) }}" 
+                           class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                            ← Précédent
+                        </a>
+                    {% endif %}
+
+                    {% for page_num in logs.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != logs.page %}
+                                <a href="{{ url_for('projets.cleanup_logs', page=page_num, status=request.args.get('status')) }}" 
+                                   class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                                    {{ page_num }}
+                                </a>
+                            {% else %}
+                                <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-md">
+                                    {{ page_num }}
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="px-3 py-2 text-sm text-gray-500">...</span>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if logs.has_next %}
+                        <a href="{{ url_for('projets.cleanup_logs', page=logs.next_num, status=request.args.get('status')) }}" 
+                           class="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                            Suivant →
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+
+        {% else %}
+            <!-- Aucun log trouvé -->
+            <div class="bg-white rounded-lg shadow-md p-8 text-center">
+                <div class="text-gray-400 mb-4">
+                    <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun log trouvé</h3>
+                <p class="text-gray-500">
+                    {% if request.args.get('status') %}
+                        Aucun log avec le statut "{{ request.args.get('status') }}" n'a été trouvé.
+                    {% else %}
+                        Aucun log de nettoyage n'a encore été enregistré.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Bouton de retour -->
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('projets.dashboard') }}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+            ← Retour au Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

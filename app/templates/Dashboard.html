@@ -10,6 +10,18 @@
             <h1 class="text-3xl font-bold text-gray-900 text-center border-b-2 border-blue-500 pb-4">
                 📊 Tableau de Bord - Gestion des Projets
             </h1>
+            
+            <!-- Actions rapides -->
+            <div class="mt-4 flex justify-center space-x-4">
+                <a href="{{ url_for('projets.cleanup_logs') }}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    📋 Logs de Nettoyage
+                </a>
+                <a href="{{ url_for('projets.index') }}" 
+                   class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    ➕ Nouveau Projet
+                </a>
+            </div>
         </div>
 
         <!-- Projects Section -->

@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 from app import db
 from app.models import Projet, StatistiqueEcart
+from app.models.logs import LogExecution
 from datetime import datetime
 import os
 import zipfile
@@ -161,3 +162,47 @@ def download_report_file(projet_id, filename):
         return redirect(url_for('projets.dashboard'))
     
     return send_file(file_path, as_attachment=True, download_name=filename)
+
+@projets_bp.route('/logs')
+def logs():
+    """Route pour consulter les logs de nettoyage et autres opérations"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Filtrer par type de log
+    log_type = request.args.get('type', 'all')
+    
+    query = LogExecution.query
+    
+    if log_type == 'cleanup':
+        query = query.filter(LogExecution.message.like('%Nettoyage%'))
+    elif log_type == 'errors':
+        query = query.filter(LogExecution.statut == 'échec')
+    elif log_type == 'success':
+        query = query.filter(LogExecution.statut == 'succès')
+    
+    logs = query.order_by(LogExecution.date_execution.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('logs.html', logs=logs, log_type=log_type)
+
+@projets_bp.route('/logs/cleanup')
+def cleanup_logs():
+    """Route spécifique pour les logs de nettoyage"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    status_filter = request.args.get('status')
+    
+    query = LogExecution.query.filter(
+        LogExecution.message.like('%Nettoyage%')
+    )
+    
+    if status_filter:
+        query = query.filter(LogExecution.statut == status_filter)
+    
+    logs = query.order_by(LogExecution.date_execution.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('cleanup_logs.html', logs=logs)

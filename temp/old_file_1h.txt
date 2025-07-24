@@ -1,0 +1,3 @@
+Fichier de test créé à 2025-07-24 11:56:49.473781
+Âge simulé: 1 heures
+Contenu de test pour le nettoyage automatique

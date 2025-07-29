@@ -1,0 +1,11 @@
+AnimalID,Name,Species,Age,Habitat,FoodType,HealthStatus,ArrivalDate,Origin,IsEndangered
+1,Leo,Lion,7,Savannah,Carnivore,Healthy,2019-06-15,South Africa,Yes
+2,Bella,Elephant,12,Grasslands,Herbivore,Healthy,2016-03-22,India,Yes
+3,Max,Zebra,5,Savannah,Herbivore,Injured,2021-08-10,Kenya,No
+4,Luna,Giraffe,8,Woodlands,Herbivore,Healthy,2018-11-03,Tanzania,No
+5,Rex,Tiger,6,Rainforest,Carnivore,Healthy,2020-01-17,Bangladesh,Yes
+6,Polly,Parrot,3,Tropical,Omnivore,Healthy,2022-05-05,Brazil,No
+7,Bob,Penguin,4,Arctic,Omnivore,Sick,2023-02-12,Antarctica,No
+8,Milo,Kangaroo,9,Desert,Herbivore,Healthy,2017-07-29,Australia,No
+9,Ellie,Hippopotamus,14,Swamp,Herbivore,Healthy,2015-09-18,Uganda,Yes
+10,Ziggy,Monkey,6,Jungle,Omnivore,Injured,2019-12-01,Congo,No

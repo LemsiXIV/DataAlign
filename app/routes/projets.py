@@ -94,57 +94,150 @@ def dashboard():
 @projets_bp.route('/projet-details/<int:projet_id>')
 def projet_details(projet_id):
     """Route pour afficher les détails d'un projet spécifique dans une popup"""
-    projet = Projet.query.get_or_404(projet_id)
-    
-    # Vérifier si les fichiers de rapport existent dans le dossier archive
-    rapport_excel_path = None
-    rapport_pdf_path = None
-    chart_path = None
-    has_files_to_download = False
-    
-    # Rechercher les statistiques pour ce projet
-    stats = StatistiqueEcart.query.filter_by(projet_id=projet_id).first()
-    
-    if projet.emplacement_archive and os.path.exists(projet.emplacement_archive):
-        excel_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.xlsx")
-        pdf_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.pdf")
-        chart_file = os.path.join(projet.emplacement_archive, "pie_chart.png")
+    try:
+        print(f"DEBUG: Début traitement projet ID: {projet_id}")
         
-        if os.path.exists(excel_path):
-            rapport_excel_path = excel_path
-        if os.path.exists(pdf_path):
-            rapport_pdf_path = pdf_path
-        if os.path.exists(chart_file):
-            chart_path = chart_file
+        projet = Projet.query.get_or_404(projet_id)
+        print(f"DEBUG: Projet trouvé: {projet.nom_projet}")
+        
+        # Vérifier si les fichiers de rapport existent dans le dossier archive
+        rapport_excel_path = None
+        rapport_pdf_path = None
+        chart_path = None
+        has_files_to_download = False
+        
+        # Rechercher les statistiques pour ce projet avec gestion d'erreur
+        try:
+            stats = StatistiqueEcart.query.filter_by(projet_id=projet_id).first()
+            print(f"DEBUG: Statistiques trouvées: {stats is not None}")
+            if stats:
+                print(f"DEBUG: Stats détails - Fichier1: {stats.nb_ecarts_uniquement_fichier1}, Fichier2: {stats.nb_ecarts_uniquement_fichier2}, Communs: {stats.nb_ecarts_communs}")
+        except Exception as e:
+            print(f"ERREUR lors de la récupération des statistiques: {e}")
+            stats = None
+        
+        print(f"DEBUG: Emplacement archive: {projet.emplacement_archive}")
+        
+        if projet.emplacement_archive and os.path.exists(projet.emplacement_archive):
+            print(f"DEBUG: Archive existe, vérification des fichiers...")
+            excel_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.xlsx")
+            pdf_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.pdf")
+            chart_file = os.path.join(projet.emplacement_archive, "pie_chart.png")
             
-        # Vérifier s'il y a des fichiers dans le dossier pour le ZIP
-        if os.path.isdir(projet.emplacement_archive):
-            files_in_dir = [f for f in os.listdir(projet.emplacement_archive) 
-                           if os.path.isfile(os.path.join(projet.emplacement_archive, f))]
-            has_files_to_download = len(files_in_dir) > 0
-    
-    # Compiler les informations du projet
-    projet_info = {
-        'id': projet.id,
-        'nom_projet': projet.nom_projet,
-        'date_creation': projet.date_creation.strftime("%d/%m/%Y à %H:%M:%S") if projet.date_creation else "N/A",
-        'fichier_1': projet.fichier_1 or "Non défini",
-        'fichier_2': projet.fichier_2 or "Non défini",
-        'emplacement_archive': projet.emplacement_archive or "Non défini",
-        'has_excel': rapport_excel_path is not None,
-        'has_pdf': rapport_pdf_path is not None,
-        'has_chart': chart_path is not None,
-        'has_files_to_download': has_files_to_download,
-        'statistics': {
-            'fichier1_unique': stats.fichier1_unique if stats else 0,
-            'fichier2_unique': stats.fichier2_unique if stats else 0,
-            'communs': stats.communs if stats else 0,
-            'total_ecarts': (stats.fichier1_unique + stats.fichier2_unique) if stats else 0,
-            'date_execution': stats.date_execution.strftime("%d/%m/%Y à %H:%M:%S") if stats and stats.date_execution else "N/A"
-        }
-    }
-    
-    return jsonify(projet_info)
+            if os.path.exists(excel_path):
+                rapport_excel_path = excel_path
+                print(f"DEBUG: Excel trouvé")
+            if os.path.exists(pdf_path):
+                rapport_pdf_path = pdf_path
+                print(f"DEBUG: PDF trouvé")
+            if os.path.exists(chart_file):
+                chart_path = chart_file
+                print(f"DEBUG: Chart trouvé")
+                
+            # Vérifier s'il y a des fichiers dans le dossier pour le ZIP
+            if os.path.isdir(projet.emplacement_archive):
+                files_in_dir = [f for f in os.listdir(projet.emplacement_archive) 
+                               if os.path.isfile(os.path.join(projet.emplacement_archive, f))]
+                has_files_to_download = len(files_in_dir) > 0
+                print(f"DEBUG: Fichiers pour ZIP: {len(files_in_dir)}")
+        else:
+            print(f"DEBUG: Archive n'existe pas ou non accessible")
+        
+        # Compiler les informations du projet
+        print(f"DEBUG: Compilation des informations...")
+        
+        # Tester chaque partie des statistiques de manière ultra-défensive
+        fichier1_unique = 0
+        fichier2_unique = 0
+        communs = 0
+        total_ecarts = 0
+        date_execution = "N/A"
+        
+        if stats:
+            try:
+                # Vérifier que l'attribut existe avant d'y accéder
+                if hasattr(stats, 'nb_ecarts_uniquement_fichier1'):
+                    fichier1_unique = stats.nb_ecarts_uniquement_fichier1 or 0
+                    print(f"DEBUG: fichier1_unique = {fichier1_unique}")
+                else:
+                    print("ERREUR: Attribut nb_ecarts_uniquement_fichier1 n'existe pas")
+            except Exception as e:
+                print(f"ERREUR fichier1_unique: {e}")
+                
+            try:
+                if hasattr(stats, 'nb_ecarts_uniquement_fichier2'):
+                    fichier2_unique = stats.nb_ecarts_uniquement_fichier2 or 0
+                    print(f"DEBUG: fichier2_unique = {fichier2_unique}")
+                else:
+                    print("ERREUR: Attribut nb_ecarts_uniquement_fichier2 n'existe pas")
+            except Exception as e:
+                print(f"ERREUR fichier2_unique: {e}")
+                
+            try:
+                if hasattr(stats, 'nb_ecarts_communs'):
+                    communs = stats.nb_ecarts_communs or 0
+                    print(f"DEBUG: communs = {communs}")
+                else:
+                    print("ERREUR: Attribut nb_ecarts_communs n'existe pas")
+            except Exception as e:
+                print(f"ERREUR communs: {e}")
+                
+            try:
+                total_ecarts = fichier1_unique + fichier2_unique
+                print(f"DEBUG: total_ecarts = {total_ecarts}")
+            except Exception as e:
+                print(f"ERREUR total_ecarts: {e}")
+                
+            try:
+                if hasattr(stats, 'date_execution') and stats.date_execution:
+                    date_execution = stats.date_execution.strftime("%d/%m/%Y à %H:%M:%S")
+                    print(f"DEBUG: date_execution = {date_execution}")
+                else:
+                    print("DEBUG: Pas de date_execution ou attribut manquant")
+            except Exception as e:
+                print(f"ERREUR date_execution: {e}")
+        
+        # Test de création de l'objet projet_info de manière défensive
+        try:
+            projet_info = {
+                'id': projet.id,
+                'nom_projet': str(projet.nom_projet) if projet.nom_projet else "Projet sans nom",
+                'date_creation': projet.date_creation.strftime("%d/%m/%Y à %H:%M:%S") if projet.date_creation else "N/A",
+                'fichier_1': str(projet.fichier_1) if projet.fichier_1 else "Non défini",
+                'fichier_2': str(projet.fichier_2) if projet.fichier_2 else "Non défini",
+                'emplacement_archive': str(projet.emplacement_archive) if projet.emplacement_archive else "Non défini",
+                'has_excel': bool(rapport_excel_path is not None),
+                'has_pdf': bool(rapport_pdf_path is not None),
+                'has_chart': bool(chart_path is not None),
+                'has_files_to_download': bool(has_files_to_download),
+                'statistics': {
+                    'fichier1_unique': int(fichier1_unique),
+                    'fichier2_unique': int(fichier2_unique),
+                    'communs': int(communs),
+                    'total_ecarts': int(total_ecarts),
+                    'date_execution': str(date_execution)
+                }
+            }
+            print(f"DEBUG: projet_info créé avec succès")
+        except Exception as e:
+            print(f"ERREUR lors de la création de projet_info: {e}")
+            raise
+        
+        print(f"DEBUG: Projet {projet_id} - Données compilées avec succès")
+        return jsonify(projet_info)
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERREUR COMPLÈTE dans projet_details pour projet {projet_id}:")
+        print(error_details)
+        
+        # Retourner une réponse d'erreur JSON au lieu d'une erreur 500
+        return jsonify({
+            'error': True,
+            'message': f"Erreur lors du chargement des détails: {str(e)}",
+            'details': error_details
+        }), 500
 
 @projets_bp.route('/projet-chart/<int:projet_id>')
 def projet_chart(projet_id):

@@ -42,31 +42,46 @@ def dashboard():
             fichiers_generes = []
         
         # Si aucun fichier généré, vérifier quand même les fichiers dans l'archive
-        if not fichiers_generes and projet.emplacement_archive and os.path.exists(projet.emplacement_archive):
-            # Créer un traitement "par défaut" basé sur les fichiers existants
-            excel_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.xlsx")
-            pdf_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.pdf")
-            chart_path = os.path.join(projet.emplacement_archive, "pie_chart.png")
+        if not fichiers_generes and projet.emplacement_archive:
+            # Construire le chemin absolu depuis la racine du projet
+            if os.path.isabs(projet.emplacement_archive):
+                archive_path = projet.emplacement_archive
+            else:
+                # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
+                current_dir = os.getcwd()
+                if current_dir.endswith('app'):
+                    # Si on est dans le dossier app/, remonter d'un niveau
+                    project_root = os.path.dirname(current_dir)
+                else:
+                    # Sinon, on est déjà à la racine
+                    project_root = current_dir
+                archive_path = os.path.join(project_root, projet.emplacement_archive)
             
-            has_excel = os.path.exists(excel_path)
-            has_pdf = os.path.exists(pdf_path)
-            has_chart = os.path.exists(chart_path)
-            
-            if has_excel or has_pdf or has_chart:
-                projets_tree[nom_projet].append({
-                    'id': f"default_{projet.id}",
-                    'nom_traitement': "Traitement principal",
-                    'date_creation': projet.date_creation,
-                    'fichier_1': projet.fichier_1 or "Non défini",
-                    'fichier_2': projet.fichier_2 or "Non défini", 
-                    'emplacement_archive': projet.emplacement_archive or "Non défini",
-                    'formatted_date': projet.date_creation.strftime("%d/%m/%Y à %H:%M:%S") if projet.date_creation else "Date inconnue",
-                    'has_excel': has_excel,
-                    'has_pdf': has_pdf,
-                    'has_chart': has_chart,
-                    'has_files': has_excel or has_pdf or has_chart,
-                    'projet_id': projet.id
-                })
+            if os.path.exists(archive_path):
+                # Créer un traitement "par défaut" basé sur les fichiers existants
+                excel_path = os.path.join(archive_path, "rapport_comparaison.xlsx")
+                pdf_path = os.path.join(archive_path, "rapport_comparaison.pdf")
+                chart_path = os.path.join(archive_path, "pie_chart.png")
+                
+                has_excel = os.path.exists(excel_path)
+                has_pdf = os.path.exists(pdf_path)
+                has_chart = os.path.exists(chart_path)
+                
+                if has_excel or has_pdf or has_chart:
+                    projets_tree[nom_projet].append({
+                        'id': f"default_{projet.id}",
+                        'nom_traitement': "Traitement principal",
+                        'date_creation': projet.date_creation,
+                        'fichier_1': projet.fichier_1 or "Non défini",
+                        'fichier_2': projet.fichier_2 or "Non défini", 
+                        'emplacement_archive': projet.emplacement_archive or "Non défini",
+                        'formatted_date': projet.date_creation.strftime("%d/%m/%Y à %H:%M:%S") if projet.date_creation else "Date inconnue",
+                        'has_excel': has_excel,
+                        'has_pdf': has_pdf,
+                        'has_chart': has_chart,
+                        'has_files': has_excel or has_pdf or has_chart,
+                        'projet_id': projet.id
+                    })
         else:
             # Utiliser les fichiers générés de la base de données
             for fichier in fichiers_generes:
@@ -118,11 +133,28 @@ def projet_details(projet_id):
         
         print(f"DEBUG: Emplacement archive: {projet.emplacement_archive}")
         
-        if projet.emplacement_archive and os.path.exists(projet.emplacement_archive):
+        # Construire le chemin absolu depuis la racine du projet
+        if projet.emplacement_archive:
+            if os.path.isabs(projet.emplacement_archive):
+                archive_path = projet.emplacement_archive
+            else:
+                # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
+                current_dir = os.getcwd()
+                if current_dir.endswith('app'):
+                    # Si on est dans le dossier app/, remonter d'un niveau
+                    project_root = os.path.dirname(current_dir)
+                else:
+                    # Sinon, on est déjà à la racine
+                    project_root = current_dir
+                archive_path = os.path.join(project_root, projet.emplacement_archive)
+        else:
+            archive_path = None
+        
+        if archive_path and os.path.exists(archive_path):
             print(f"DEBUG: Archive existe, vérification des fichiers...")
-            excel_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.xlsx")
-            pdf_path = os.path.join(projet.emplacement_archive, "rapport_comparaison.pdf")
-            chart_file = os.path.join(projet.emplacement_archive, "pie_chart.png")
+            excel_path = os.path.join(archive_path, "rapport_comparaison.xlsx")
+            pdf_path = os.path.join(archive_path, "rapport_comparaison.pdf")
+            chart_file = os.path.join(archive_path, "pie_chart.png")
             
             if os.path.exists(excel_path):
                 rapport_excel_path = excel_path
@@ -135,9 +167,9 @@ def projet_details(projet_id):
                 print(f"DEBUG: Chart trouvé")
                 
             # Vérifier s'il y a des fichiers dans le dossier pour le ZIP
-            if os.path.isdir(projet.emplacement_archive):
-                files_in_dir = [f for f in os.listdir(projet.emplacement_archive) 
-                               if os.path.isfile(os.path.join(projet.emplacement_archive, f))]
+            if os.path.isdir(archive_path):
+                files_in_dir = [f for f in os.listdir(archive_path) 
+                               if os.path.isfile(os.path.join(archive_path, f))]
                 has_files_to_download = len(files_in_dir) > 0
                 print(f"DEBUG: Fichiers pour ZIP: {len(files_in_dir)}")
         else:
@@ -244,13 +276,30 @@ def projet_chart(projet_id):
     """Route pour servir le graphique d'un projet spécifique"""
     projet = Projet.query.get_or_404(projet_id)
     
-    if not projet.emplacement_archive or not os.path.exists(projet.emplacement_archive):
+    if not projet.emplacement_archive:
         return jsonify({'error': 'Archive introuvable'}), 404
     
-    chart_path = os.path.join(projet.emplacement_archive, "pie_chart.png")
+    # Construire le chemin absolu depuis la racine du projet
+    if os.path.isabs(projet.emplacement_archive):
+        archive_path = projet.emplacement_archive
+    else:
+        # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
+        current_dir = os.getcwd()
+        if current_dir.endswith('app'):
+            # Si on est dans le dossier app/, remonter d'un niveau
+            project_root = os.path.dirname(current_dir)
+        else:
+            # Sinon, on est déjà à la racine
+            project_root = current_dir
+        archive_path = os.path.join(project_root, projet.emplacement_archive)
+    
+    if not os.path.exists(archive_path):
+        return jsonify({'error': f'Archive introuvable: {archive_path}'}), 404
+    
+    chart_path = os.path.join(archive_path, "pie_chart.png")
     
     if not os.path.exists(chart_path):
-        return jsonify({'error': 'Graphique introuvable'}), 404
+        return jsonify({'error': f'Graphique introuvable: {chart_path}'}), 404
     
     return send_file(chart_path, mimetype='image/png')
 
@@ -259,8 +308,26 @@ def download_project_zip(projet_id):
     """Route pour télécharger tout le contenu d'un projet spécifique en ZIP"""
     projet = Projet.query.get_or_404(projet_id)
     
-    if not projet.emplacement_archive or not os.path.exists(projet.emplacement_archive):
+    if not projet.emplacement_archive:
         flash("Dossier d'archive introuvable", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    # Construire le chemin absolu depuis la racine du projet
+    if os.path.isabs(projet.emplacement_archive):
+        archive_path = projet.emplacement_archive
+    else:
+        # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
+        current_dir = os.getcwd()
+        if current_dir.endswith('app'):
+            # Si on est dans le dossier app/, remonter d'un niveau
+            project_root = os.path.dirname(current_dir)
+        else:
+            # Sinon, on est déjà à la racine
+            project_root = current_dir
+        archive_path = os.path.join(project_root, projet.emplacement_archive)
+    
+    if not os.path.exists(archive_path):
+        flash(f"Dossier d'archive introuvable: {archive_path}", "error")
         return redirect(url_for('projets.dashboard'))
     
     # Créer un fichier ZIP temporaire
@@ -270,10 +337,10 @@ def download_project_zip(projet_id):
     try:
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Vérifier si emplacement_archive est un dossier ou un chemin
-            if os.path.isdir(projet.emplacement_archive):
+            if os.path.isdir(archive_path):
                 # Ajouter seulement les fichiers du dossier spécifique (pas les sous-dossiers)
-                for file in os.listdir(projet.emplacement_archive):
-                    file_path = os.path.join(projet.emplacement_archive, file)
+                for file in os.listdir(archive_path):
+                    file_path = os.path.join(archive_path, file)
                     # Ajouter seulement les fichiers (pas les dossiers)
                     if os.path.isfile(file_path):
                         zipf.write(file_path, file)
@@ -306,14 +373,32 @@ def download_report_file(projet_id, filename):
     """Route pour télécharger un fichier de rapport spécifique"""
     projet = Projet.query.get_or_404(projet_id)
     
-    if not projet.emplacement_archive or not os.path.exists(projet.emplacement_archive):
+    if not projet.emplacement_archive:
         flash("Dossier d'archive introuvable", "error")
         return redirect(url_for('projets.dashboard'))
     
-    file_path = os.path.join(projet.emplacement_archive, filename)
+    # Construire le chemin absolu depuis la racine du projet
+    if os.path.isabs(projet.emplacement_archive):
+        archive_path = projet.emplacement_archive
+    else:
+        # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
+        current_dir = os.getcwd()
+        if current_dir.endswith('app'):
+            # Si on est dans le dossier app/, remonter d'un niveau
+            project_root = os.path.dirname(current_dir)
+        else:
+            # Sinon, on est déjà à la racine
+            project_root = current_dir
+        archive_path = os.path.join(project_root, projet.emplacement_archive)
+    
+    if not os.path.exists(archive_path):
+        flash(f"Dossier d'archive introuvable: {archive_path}", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    file_path = os.path.join(archive_path, filename)
     
     if not os.path.exists(file_path):
-        flash("Fichier introuvable", "error")
+        flash(f"Fichier introuvable: {file_path}", "error")
         return redirect(url_for('projets.dashboard'))
     
     return send_file(file_path, as_attachment=True, download_name=filename)

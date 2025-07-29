@@ -189,20 +189,78 @@ def logs():
 
 @projets_bp.route('/logs/cleanup')
 def cleanup_logs():
-    """Route spécifique pour les logs de nettoyage"""
+    """Route pour consulter tous les logs avec filtres avancés"""
     page = request.args.get('page', 1, type=int)
-    per_page = 10
-    status_filter = request.args.get('status')
+    per_page = 15
     
-    query = LogExecution.query.filter(
-        LogExecution.message.like('%Nettoyage%')
-    )
+    # Filtres disponibles
+    status_filter = request.args.get('status')  # succès, échec
+    log_type_filter = request.args.get('log_type')  # cleanup, projects, reports, tests
+    date_filter = request.args.get('date_range')  # today, week, month
     
+    query = LogExecution.query
+    
+    # Filtre par statut
     if status_filter:
         query = query.filter(LogExecution.statut == status_filter)
+    
+    # Filtre par type de log
+    if log_type_filter == 'cleanup':
+        query = query.filter(LogExecution.message.like('%Nettoyage%'))
+    elif log_type_filter == 'projects':
+        query = query.filter(
+            db.or_(
+                LogExecution.message.like('%projet créé%'),
+                LogExecution.message.like('%projet existant%'),
+                LogExecution.message.like('%Fichiers traités%')
+            )
+        )
+    elif log_type_filter == 'reports':
+        query = query.filter(
+            db.or_(
+                LogExecution.message.like('%Excel%'),
+                LogExecution.message.like('%PDF%')
+            )
+        )
+    elif log_type_filter == 'tests':
+        query = query.filter(LogExecution.message.like('%Test rapide%'))
+    
+    # Filtre par date
+    if date_filter == 'today':
+        from datetime import date
+        today = date.today()
+        query = query.filter(db.func.date(LogExecution.date_execution) == today)
+    elif date_filter == 'week':
+        from datetime import date, timedelta
+        week_ago = date.today() - timedelta(days=7)
+        query = query.filter(LogExecution.date_execution >= week_ago)
+    elif date_filter == 'month':
+        from datetime import date, timedelta
+        month_ago = date.today() - timedelta(days=30)
+        query = query.filter(LogExecution.date_execution >= month_ago)
     
     logs = query.order_by(LogExecution.date_execution.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
-    return render_template('cleanup_logs.html', logs=logs)
+    # Statistiques pour affichage
+    total_logs = LogExecution.query.count()
+    success_logs = LogExecution.query.filter(LogExecution.statut == 'succès').count()
+    error_logs = LogExecution.query.filter(LogExecution.statut == 'échec').count()
+    cleanup_logs_count = LogExecution.query.filter(LogExecution.message.like('%Nettoyage%')).count()
+    
+    stats = {
+        'total': total_logs,
+        'success': success_logs,
+        'errors': error_logs,
+        'cleanup': cleanup_logs_count
+    }
+    
+    return render_template('all_logs.html', 
+                         logs=logs, 
+                         stats=stats,
+                         current_filters={
+                             'status': status_filter,
+                             'log_type': log_type_filter,
+                             'date_range': date_filter
+                         })

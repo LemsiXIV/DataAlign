@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+
+{% block title %}DataAlign - Tous les Logs{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 text-center border-b-2 border-blue-500 pb-4">
+            📋 Historique Complet des Opérations
+        </h1>
+        <p class="text-center text-gray-600 mt-2">Consultation de tous les logs d'exécution avec filtres avancés</p>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <div class="text-3xl font-bold text-blue-600">{{ stats.total }}</div>
+            <div class="text-gray-600">Total Logs</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <div class="text-3xl font-bold text-green-600">{{ stats.success }}</div>
+            <div class="text-gray-600">Succès</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <div class="text-3xl font-bold text-red-600">{{ stats.errors }}</div>
+            <div class="text-gray-600">Échecs</div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6 text-center">
+            <div class="text-3xl font-bold text-purple-600">{{ stats.cleanup }}</div>
+            <div class="text-gray-600">Nettoyages</div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold mb-4">🔍 Filtres</h3>
+        
+        <!-- Filtre par statut -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Statut :</label>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ url_for('projets.cleanup_logs', log_type=current_filters.log_type, date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if not current_filters.status %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    Tous
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status='succès', log_type=current_filters.log_type, date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.status == 'succès' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    ✅ Succès
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status='échec', log_type=current_filters.log_type, date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.status == 'échec' %}bg-red-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    ❌ Échecs
+                </a>
+            </div>
+        </div>
+
+        <!-- Filtre par type d'opération -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Type d'opération :</label>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if not current_filters.log_type %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    Toutes
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type='cleanup', date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.log_type == 'cleanup' %}bg-purple-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    🧹 Nettoyage
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type='projects', date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.log_type == 'projects' %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    📁 Projets
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type='reports', date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.log_type == 'reports' %}bg-orange-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    📊 Rapports
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type='tests', date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.log_type == 'tests' %}bg-teal-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    ⚡ Tests Rapides
+                </a>
+            </div>
+        </div>
+
+        <!-- Filtre par période -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Période :</label>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type=current_filters.log_type) }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if not current_filters.date_range %}bg-blue-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    Toutes
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type=current_filters.log_type, date_range='today') }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.date_range == 'today' %}bg-green-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    📅 Aujourd'hui
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type=current_filters.log_type, date_range='week') }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.date_range == 'week' %}bg-yellow-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    📆 7 derniers jours
+                </a>
+                <a href="{{ url_for('projets.cleanup_logs', status=current_filters.status, log_type=current_filters.log_type, date_range='month') }}" 
+                   class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if current_filters.date_range == 'month' %}bg-red-600 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                    🗓️ 30 derniers jours
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Résultats -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex justify-between items-center">
+            <h3 class="text-lg font-semibold">
+                {% if logs.total %}
+                    {{ logs.total }} log(s) trouvé(s)
+                    {% if current_filters.status or current_filters.log_type or current_filters.date_range %}
+                        <span class="text-sm text-gray-500">(avec filtres appliqués)</span>
+                    {% endif %}
+                {% else %}
+                    Aucun log trouvé
+                {% endif %}
+            </h3>
+            
+            {% if current_filters.status or current_filters.log_type or current_filters.date_range %}
+            <a href="{{ url_for('projets.cleanup_logs') }}" 
+               class="px-3 py-2 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600 transition-colors">
+                🔄 Réinitialiser filtres
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="space-y-4">
+        {% if logs.items %}
+            {% for log in logs.items %}
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 
+                        {% if log.statut == 'succès' %}border-green-500{% else %}border-red-500{% endif %}">
+                
+                <!-- Header du log -->
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                     {% if log.statut == 'succès' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {% if log.statut == 'succès' %}✅ Succès{% else %}❌ Échec{% endif %}
+                        </span>
+                        
+                        <!-- Badge de type d'opération -->
+                        {% if 'Nettoyage' in log.message %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                🧹 Nettoyage
+                            </span>
+                        {% elif 'projet créé' in log.message or 'projet existant' in log.message %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                📁 Projet
+                            </span>
+                        {% elif 'Excel' in log.message or 'PDF' in log.message %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                📊 Rapport
+                            </span>
+                        {% elif 'Test rapide' in log.message %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                                ⚡ Test Rapide
+                            </span>
+                        {% endif %}
+                        
+                        <span class="text-sm text-gray-500">
+                            {{ log.date_execution.strftime('%d/%m/%Y à %H:%M:%S') }}
+                        </span>
+                    </div>
+                    
+                    {% if log.projet_id %}
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                        Projet #{{ log.projet_id }}
+                    </span>
+                    {% else %}
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                        Système
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <!-- Message du log -->
+                <div class="text-gray-700">
+                    {{ log.message }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="bg-gray-50 rounded-lg p-8 text-center">
+                <div class="text-gray-400 text-4xl mb-4">📋</div>
+                <h3 class="text-lg font-medium text-gray-500 mb-2">Aucun log trouvé</h3>
+                <p class="text-gray-400">
+                    {% if current_filters.status or current_filters.log_type or current_filters.date_range %}
+                        Essayez de modifier les filtres ou de les réinitialiser.
+                    {% else %}
+                        Aucune opération n'a encore été enregistrée.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if logs.pages > 1 %}
+    <div class="mt-8 flex justify-center">
+        <nav class="inline-flex rounded-md shadow">
+            {% if logs.has_prev %}
+                <a href="{{ url_for('projets.cleanup_logs', page=logs.prev_num, status=current_filters.status, log_type=current_filters.log_type, date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Précédent
+                </a>
+            {% endif %}
+            
+            {% for page_num in logs.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num != logs.page %}
+                        <a href="{{ url_for('projets.cleanup_logs', page=page_num, status=current_filters.status, log_type=current_filters.log_type, date_range=current_filters.date_range) }}" 
+                           class="px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            {{ page_num }}
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                            {{ page_num }}
+                        </span>
+                    {% endif %}
+                {% else %}
+                    <span class="px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500">
+                        ...
+                    </span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if logs.has_next %}
+                <a href="{{ url_for('projets.cleanup_logs', page=logs.next_num, status=current_filters.status, log_type=current_filters.log_type, date_range=current_filters.date_range) }}" 
+                   class="px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    Suivant
+                </a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+
+    <!-- Bouton retour -->
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('projets.dashboard') }}" 
+           class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            ← Retour au Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

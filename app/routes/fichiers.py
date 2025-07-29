@@ -7,6 +7,7 @@ from datetime import datetime
 from app import db
 from app.models import Projet
 from app.models.logs import LogExecution
+from app.models.fichier_genere import FichierGenere
 from app.services.lecteur_fichier import read_uploaded_file
 from app.services.generateur_excel import GenerateurExcel
 from app.services.generateur_pdf import GenerateurPdf
@@ -311,6 +312,37 @@ def download_excel():
     db.session.add(log)
     db.session.commit()
     
+    # Enregistrer le fichier Excel généré dans la table fichiers_generes
+    if projet_id:
+        projet = Projet.query.get(projet_id)
+        if projet:
+            # Chercher s'il existe déjà un traitement récent (dans les 5 dernières minutes) pour ce projet
+            from datetime import timedelta
+            cutoff_time = datetime.now() - timedelta(minutes=5)
+            
+            fichier_existant = FichierGenere.query.filter(
+                FichierGenere.projet_id == projet_id,
+                FichierGenere.date_execution >= cutoff_time
+            ).order_by(FichierGenere.date_execution.desc()).first()
+            
+            if fichier_existant:
+                # Mettre à jour l'enregistrement existant avec le fichier Excel
+                fichier_existant.nom_fichier_excel = "rapport_comparaison.xlsx"
+                fichier_existant.date_execution = datetime.now()
+            else:
+                # Créer un nouveau traitement
+                nom_traitement = f"Traitement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                fichier_genere = FichierGenere(
+                    projet_id=projet_id,
+                    nom_traitement_projet=nom_traitement,
+                    nom_fichier_excel="rapport_comparaison.xlsx",
+                    chemin_archive=projet.emplacement_archive,
+                    date_execution=datetime.now()
+                )
+                db.session.add(fichier_genere)
+            
+            db.session.commit()
+    
     return generateur.generer_rapport()
 
 @fichiers_bp.route('/download_pdf')
@@ -378,13 +410,47 @@ def download_pdf():
         db.session.add(log)
         db.session.commit()
         
+        # Enregistrer le fichier PDF généré dans la table fichiers_generes
+        if projet_id:
+            projet = Projet.query.get(projet_id)
+            if projet:
+                # Chercher s'il existe déjà un traitement récent (dans les 5 dernières minutes) pour ce projet
+                from datetime import timedelta
+                cutoff_time = datetime.now() - timedelta(minutes=5)
+                
+                fichier_existant = FichierGenere.query.filter(
+                    FichierGenere.projet_id == projet_id,
+                    FichierGenere.date_execution >= cutoff_time
+                ).order_by(FichierGenere.date_execution.desc()).first()
+                
+                if fichier_existant:
+                    # Mettre à jour l'enregistrement existant avec les fichiers PDF et graphique
+                    fichier_existant.nom_fichier_pdf = "rapport_comparaison.pdf"
+                    fichier_existant.nom_fichier_graphe = "pie_chart.png"
+                    fichier_existant.date_execution = datetime.now()
+                else:
+                    # Créer un nouveau traitement
+                    nom_traitement = f"Traitement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    fichier_genere = FichierGenere(
+                        projet_id=projet_id,
+                        nom_traitement_projet=nom_traitement,
+                        nom_fichier_pdf="rapport_comparaison.pdf",
+                        nom_fichier_graphe="pie_chart.png",
+                        chemin_archive=projet.emplacement_archive,
+                        date_execution=datetime.now()
+                    )
+                    db.session.add(fichier_genere)
+                
+                db.session.commit()
+        
         return generateur.generer_pdf()
     except Exception as e:
-        # Log d'échec pour erreur de génération PDF
+        # Log d'échec pour erreur de génération PDF avec plus de détails
+        error_details = f"{str(e)} - Écarts1: {len(results['ecarts_fichier1'])}, Écarts2: {len(results['ecarts_fichier2'])}, Communs: {results['n_common']}"
         log = LogExecution(
             projet_id=projet_id,
             statut='échec',
-            message=f"Échec génération PDF: Erreur lors de la génération - {str(e)}"
+            message=f"Échec génération PDF: {error_details}"
         )
         db.session.add(log)
         db.session.commit()

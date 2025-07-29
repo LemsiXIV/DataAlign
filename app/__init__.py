@@ -31,7 +31,10 @@ def create_app():
     db.init_app(app)
     
     # Import models after db initialization to avoid circular imports
-    from app.models import Projet, ConfigurationCleComposee, StatistiqueEcart, FichierGenere, LogExecution
+    from app.models import Projet, ConfigurationCleComposee
+    from app.models.statistiques import StatistiqueEcart
+    from app.models.fichier_genere import FichierGenere
+    from app.models.logs import LogExecution
     
     # Register blueprints
     from app.routes.projets import projets_bp

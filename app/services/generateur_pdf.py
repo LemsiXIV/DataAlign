@@ -29,8 +29,16 @@ class GenerateurPdf:
         plt.figure(figsize=(6, 6))
         plt.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=140)
         plt.axis('equal')
+        
+        # Sauvegarder dans le dossier static pour l'affichage
         chart_path = os.path.join('app/static', 'pie_chart.png')
         plt.savefig(chart_path, bbox_inches='tight')
+        
+        # Sauvegarder aussi dans le dossier du projet si disponible
+        if self.project_folder and os.path.exists(self.project_folder):
+            project_chart_path = os.path.join(self.project_folder, 'pie_chart.png')
+            plt.savefig(project_chart_path, bbox_inches='tight')
+        
         plt.close()
         
         return chart_path
@@ -43,11 +51,21 @@ class GenerateurPdf:
         logo_path_abs = os.path.abspath(os.path.join('app/static', 'sofrecom.png'))
         chart_path_abs = os.path.abspath(chart_path)
 
+        # Convert DataFrames to dict and handle empty cases
+        ecarts1_records = self.ecarts1.to_dict(orient='records') if not self.ecarts1.empty else []
+        ecarts2_records = self.ecarts2.to_dict(orient='records') if not self.ecarts2.empty else []
+        
+        # Get column names safely
+        ecarts1_columns = list(self.ecarts1.columns) if not self.ecarts1.empty else []
+        ecarts2_columns = list(self.ecarts2.columns) if not self.ecarts2.empty else []
+
         rendered_html = render_template('report.html',
             file1_name=self.file1_name,
             file2_name=self.file2_name,
-            ecarts1=self.ecarts1.to_dict(orient='records'),
-            ecarts2=self.ecarts2.to_dict(orient='records'),
+            ecarts1=ecarts1_records,
+            ecarts2=ecarts2_records,
+            ecarts1_columns=ecarts1_columns,
+            ecarts2_columns=ecarts2_columns,
             total1=self.total1,
             total2=self.total2,
             lignes_communes=self.communes,

@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from app import db
 from app.models import Projet
+from app.models.logs import LogExecution
 from app.services.lecteur_fichier import read_uploaded_file
 from app.services.generateur_excel import GenerateurExcel
 from app.services.generateur_pdf import GenerateurPdf
@@ -52,6 +53,15 @@ def upload_file():
             flash("Projet sélectionné introuvable", "error")
             return redirect(url_for('projets.index'))
         actual_project_name = projet.nom_projet
+        
+        # Ajouter une trace dans logs_execution pour l'utilisation d'un projet existant
+        log = LogExecution(
+            projet_id=projet.id,
+            statut='succès',
+            message=f"Fichiers ajoutés au projet existant: {actual_project_name} - {file.filename} et {file2.filename}"
+        )
+        db.session.add(log)
+        db.session.commit()
     else:
         if not nom_projet:
             flash("Veuillez saisir un nom de projet ou en sélectionner un existant.", "error")
@@ -67,6 +77,15 @@ def upload_file():
             emplacement_archive=""  # Will be updated after directory creation
         )
         db.session.add(projet)
+        db.session.commit()
+        
+        # Ajouter une trace dans logs_execution pour la création du projet
+        log = LogExecution(
+            projet_id=projet.id,
+            statut='succès',
+            message=f"Nouveau projet créé: {nom_projet} avec fichiers {file.filename} et {file2.filename}"
+        )
+        db.session.add(log)
         db.session.commit()
 
     # Create project-specific directory within archive using actual project name
@@ -103,6 +122,15 @@ def upload_file():
         print("Colonnes fichier 1 après lecture :", df.columns.tolist())
         print("Colonnes fichier 2 après lecture :", df2.columns.tolist())
     except Exception as e:
+        # Ajouter une trace d'échec dans logs_execution
+        log = LogExecution(
+            projet_id=projet.id,
+            statut='échec',
+            message=f"Erreur lors de la lecture des fichiers pour le projet {actual_project_name}: {str(e)}"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         flash(f"Erreur de lecture : {e}", "error")
         return redirect(url_for('projets.index'))
 
@@ -127,6 +155,15 @@ def upload_file():
     session['file1_name'] = file.filename
     session['file2_name'] = file2.filename
     session['project_folder'] = project_folder  # Store project folder for Excel/PDF generation
+
+    # Ajouter une trace de succès final pour le traitement des fichiers
+    log = LogExecution(
+        projet_id=projet.id,
+        statut='succès',
+        message=f"Fichiers traités avec succès pour le projet {actual_project_name} - {len(df)} lignes dans {file.filename}, {len(df2)} lignes dans {file2.filename}"
+    )
+    db.session.add(log)
+    db.session.commit()
 
     return render_template('index.html',
                            data=df.to_dict(orient='records'),
@@ -154,6 +191,15 @@ def fast_upload():
         df = read_uploaded_file(file)
         df2 = read_uploaded_file(file2)
     except Exception as e:
+        # Ajouter une trace d'échec pour le test rapide
+        log = LogExecution(
+            projet_id=None,  # Pas de projet pour les tests rapides
+            statut='échec',
+            message=f"Erreur lors du test rapide avec fichiers {file.filename} et {file2.filename}: {str(e)}"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         flash(f"Erreur lors de la lecture des fichiers : {e}", "error")
         return redirect(url_for('projets.index'))
 
@@ -176,6 +222,15 @@ def fast_upload():
     session['file1_name'] = file.filename
     session['file2_name'] = file2.filename
 
+    # Ajouter une trace de succès pour le test rapide
+    log = LogExecution(
+        projet_id=None,  # Pas de projet pour les tests rapides
+        statut='succès',
+        message=f"Test rapide réussi avec fichiers {file.filename} et {file2.filename} - {len(df)} et {len(df2)} lignes"
+    )
+    db.session.add(log)
+    db.session.commit()
+
     return render_template('index.html', 
                             data=df.to_dict(orient='records'), 
                             columns=df.columns.tolist(), 
@@ -185,18 +240,37 @@ def fast_upload():
 
 @fichiers_bp.route('/download')
 def download_excel():
+    projet_id = session.get('projet_id')
     try:
         # Load data from saved JSON files instead of session
         df_path = session.get('df_path')
         df2_path = session.get('df2_path')
         
         if not df_path or not df2_path:
+            # Log d'échec pour données manquantes
+            log = LogExecution(
+                projet_id=projet_id,
+                statut='échec',
+                message="Échec génération Excel: Données non trouvées dans la session"
+            )
+            db.session.add(log)
+            db.session.commit()
+            
             flash("Données non trouvées dans la session", "error")
             return redirect(url_for('projets.index'))
             
         df = pd.read_json(df_path)
         df2 = pd.read_json(df2_path)
     except Exception as e:
+        # Log d'échec pour erreur de chargement
+        log = LogExecution(
+            projet_id=projet_id,
+            statut='échec',
+            message=f"Échec génération Excel: Erreur lors du chargement des données - {str(e)}"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         flash(f"Erreur lors du chargement des données pour export : {e}", "error")
         return redirect(url_for('projets.index'))
 
@@ -204,6 +278,15 @@ def download_excel():
     keys2 = request.args.getlist('key2')
 
     if not keys1 or not keys2:
+        # Log d'échec pour clés manquantes
+        log = LogExecution(
+            projet_id=projet_id,
+            statut='échec',
+            message="Échec génération Excel: Clés de comparaison manquantes"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         flash("Clés manquantes pour la génération du fichier", "error")
         return redirect(url_for('projets.index'))
 
@@ -218,22 +301,51 @@ def download_excel():
         results['communs'],
         session.get('project_folder')  # Pass project folder for saving
     )
+    
+    # Log de succès pour la génération Excel
+    log = LogExecution(
+        projet_id=projet_id,
+        statut='succès',
+        message=f"Rapport Excel généré avec succès - {results['n_common']} enregistrements communs, {len(results['ecarts_fichier1'])} écarts fichier 1, {len(results['ecarts_fichier2'])} écarts fichier 2"
+    )
+    db.session.add(log)
+    db.session.commit()
+    
     return generateur.generer_rapport()
 
 @fichiers_bp.route('/download_pdf')
 def download_pdf():
+    projet_id = session.get('projet_id')
     try:
         # Load data from saved JSON files instead of session
         df_path = session.get('df_path')
         df2_path = session.get('df2_path')
         
         if not df_path or not df2_path:
+            # Log d'échec pour données manquantes
+            log = LogExecution(
+                projet_id=projet_id,
+                statut='échec',
+                message="Échec génération PDF: Données non trouvées dans la session"
+            )
+            db.session.add(log)
+            db.session.commit()
+            
             flash("Données non trouvées dans la session", "error")
             return redirect(url_for('projets.index'))
             
         df = pd.read_json(df_path)
         df2 = pd.read_json(df2_path)
     except Exception as e:
+        # Log d'échec pour erreur de chargement
+        log = LogExecution(
+            projet_id=projet_id,
+            statut='échec',
+            message=f"Échec génération PDF: Erreur lors du chargement des données - {str(e)}"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         flash(f"Erreur : {e}", "error")
         return redirect(url_for('projets.index'))
 
@@ -257,7 +369,25 @@ def download_pdf():
     )
     
     try:
+        # Log de succès pour la génération PDF
+        log = LogExecution(
+            projet_id=projet_id,
+            statut='succès',
+            message=f"Rapport PDF généré avec succès - {results['n_common']} enregistrements communs, {len(results['ecarts_fichier1'])} écarts fichier 1, {len(results['ecarts_fichier2'])} écarts fichier 2"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         return generateur.generer_pdf()
     except Exception as e:
+        # Log d'échec pour erreur de génération PDF
+        log = LogExecution(
+            projet_id=projet_id,
+            statut='échec',
+            message=f"Échec génération PDF: Erreur lors de la génération - {str(e)}"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
         flash(f"Erreur lors de la génération du PDF : {e}", "error")
         return redirect(url_for('projets.index'))

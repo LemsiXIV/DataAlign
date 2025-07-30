@@ -1,0 +1,16 @@
+id,nom,prenom,age,ville,salaire,departement,date_embauche
+1,Dupont,Jean,25,Paris,35000,IT,2023-01-15
+2,Martin,Marie,30,Lyon,42000,RH,2022-03-20
+3,Dubois,Pierre,28,Marseille,38000,Finance,2023-05-10
+4,Rousseau,Sophie,35,Toulouse,45000,Marketing,2021-12-01
+5,Bernard,Paul,40,Nice,48000,IT,2020-08-15
+6,Petit,Emma,27,Nantes,36000,RH,2023-02-28
+7,Robert,Lucas,32,Strasbourg,41000,Finance,2022-09-05
+8,Richard,Camille,29,Bordeaux,39000,Marketing,2023-04-12
+9,Durand,Antoine,33,Lille,43000,IT,2022-01-30
+10,Moreau,Julie,26,Rennes,37000,RH,2023-06-18
+11,Simon,Thomas,31,Montpellier,40000,Finance,2022-11-22
+12,Laurent,Clara,34,Dijon,44000,Marketing,2021-10-08
+13,Leroy,Hugo,28,Clermont-Ferrand,38500,IT,2023-03-14
+14,Roux,Léa,30,Tours,41500,RH,2022-07-25
+15,Vincent,Alexandre,36,Angers,46000,Finance,2021-05-17

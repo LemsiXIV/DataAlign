@@ -60,26 +60,52 @@
                 </div>
                 <!-- Modal body -->
                 <div class="p-4 md:p-5">
+                    <!-- Affichage des erreurs générales -->
+                    {% if project_error and show_fast_modal %}
+                    <div class="mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50 border border-red-200 dark:bg-gray-800 dark:text-red-400 animate-pulse" role="alert">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <span class="font-medium">Erreur :</span> {{ project_error }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     <form class="space-y-4" action="{{ url_for('fichiers.fast_upload') }}" method="POST" enctype="multipart/form-data">
                         <div>
                             <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                                 for="user_avatar">Upload file 1 :</label>
                             <input
-                                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                                class="block w-full text-sm text-gray-900 border {% if file1_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
                                 aria-describedby="file_fast_upload" id="file_fast_upload" name="file_fast_upload"
                                 type="file">
                             <div class="mt-1 text-sm text-gray-500 dark:text-gray-300" id="user_avatar_help">Veuillez
                                 choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
+                            {% if file1_error %}
+                            <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
+                                <span class="font-medium">⚠️ {{ file1_error }}</span>
+                            </div>
+                            {% endif %}
                         </div>
                         <div>
                             <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
                                 for="user_avatar">Upload file 2 :</label>
                             <input
-                                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                                class="block w-full text-sm text-gray-900 border {% if file2_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
                                 aria-describedby="file_fast_upload2" id="file_fast_upload2" name="file_fast_upload2"
                                 type="file">
                             <div class="mt-1 text-sm text-gray-500 dark:text-gray-300" id="user_avatar_help">Veuillez
                                 choisir un fichier du format suivant : CSV,XLSX,JSON.</div>
+                            {% if file2_error %}
+                            <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
+                                <span class="font-medium">⚠️ {{ file2_error }}</span>
+                            </div>
+                            {% endif %}
                         </div>
                         <button type="submit"
                             class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Compaire</button>
@@ -132,6 +158,11 @@
                    dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 
                    dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
                                     placeholder="Nom du projet" >
+                                {% if project_error %}
+                                <div class="mt-1 text-sm text-red-600" role="alert">
+                                    {{ project_error }}
+                                </div>
+                                {% endif %}
                             </div>
 
                             <!-- Sélection projet existant + Date -->
@@ -162,16 +193,15 @@
                                         class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                                         Upload file 1
                                     </label>
-                                    <input type="file" id="file" name="file" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer 
+                                    <input type="file" id="file" name="file" class="block w-full text-sm text-gray-900 border {% if file1_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer 
                        bg-gray-50 dark:text-gray-400 focus:outline-none 
                        dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
                                     <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
                                         Veuillez choisir un fichier du format suivant : CSV, XLSX, JSON.
                                     </div>
-                                    {% if error %}
-                                    <div class="p-4 mt-2 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
-                                        role="alert">
-                                        <span class="font-medium">{{ error }}</span>
+                                    {% if file1_error %}
+                                    <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
+                                        <span class="font-medium">⚠️ {{ file1_error }}</span>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -182,16 +212,15 @@
                                         class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
                                         Upload file 2
                                     </label>
-                                    <input type="file" id="file2" name="file2" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer 
+                                    <input type="file" id="file2" name="file2" class="block w-full text-sm text-gray-900 border {% if file2_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer 
                        bg-gray-50 dark:text-gray-400 focus:outline-none 
                        dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
                                     <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
                                         Veuillez choisir un fichier du format suivant : CSV, XLSX, JSON.
                                     </div>
-                                    {% if error %}
-                                    <div class="p-4 mt-2 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
-                                        role="alert">
-                                        <span class="font-medium">{{ error }}</span>
+                                    {% if file2_error %}
+                                    <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
+                                        <span class="font-medium">⚠️ {{ file2_error }}</span>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -389,5 +418,101 @@
             nomProjetInput.disabled = false;
         }
     });
+
+    // Auto-open fast test modal if there are errors
+    {% if show_fast_modal %}
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ouvrir automatiquement le modal de test rapide avec le backdrop
+        const modal = document.getElementById('Fast_Test-modal');
+        if (modal) {
+            // Supprimer la classe hidden et ajouter les classes pour afficher le modal
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('role', 'dialog');
+            
+            // Ajouter les styles pour le backdrop
+            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modal.style.zIndex = '50';
+            
+            // Empêcher le scroll du body
+            document.body.style.overflow = 'hidden';
+            
+            // Gérer la fermeture du modal
+            const closeButton = modal.querySelector('[data-modal-hide="Fast_Test-modal"]');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    modal.removeAttribute('aria-modal');
+                    modal.removeAttribute('role');
+                    document.body.style.overflow = '';
+                });
+            }
+            
+            // Fermer le modal en cliquant sur le backdrop
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    modal.removeAttribute('aria-modal');
+                    modal.removeAttribute('role');
+                    document.body.style.overflow = '';
+                }
+            });
+        }
+    });
+    {% endif %}
+
+    // Auto-open main project modal if there are errors
+    {% if show_main_modal %}
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ouvrir automatiquement le modal principal avec le backdrop
+        const modal = document.getElementById('defaultModal');
+        if (modal) {
+            // Supprimer la classe hidden et ajouter les classes pour afficher le modal
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('role', 'dialog');
+            
+            // Ajouter les styles pour le backdrop
+            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modal.style.zIndex = '50';
+            
+            // Empêcher le scroll du body
+            document.body.style.overflow = 'hidden';
+            
+            // Gérer la fermeture du modal
+            const closeButton = modal.querySelector('[data-modal-hide="defaultModal"]');
+            if (closeButton) {
+                closeButton.addEventListener('click', function() {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    modal.removeAttribute('aria-modal');
+                    modal.removeAttribute('role');
+                    document.body.style.overflow = '';
+                });
+            }
+            
+            // Fermer le modal en cliquant sur le backdrop
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    modal.removeAttribute('aria-modal');
+                    modal.removeAttribute('role');
+                    document.body.style.overflow = '';
+                }
+            });
+        }
+    });
+    {% endif %}
 </script>
 {% endblock %}

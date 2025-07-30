@@ -15,19 +15,31 @@ from app.services.comparateur import ComparateurFichiers
 
 fichiers_bp = Blueprint('fichiers', __name__)
 
+def render_index_with_errors(file1_error=None, file2_error=None, project_error=None, show_fast_modal=False, show_main_modal=False):
+    """Helper function to render index with specific field errors"""
+    projets = Projet.query.all()
+    return render_template('index.html', 
+                         projets=projets,
+                         file1_error=file1_error,
+                         file2_error=file2_error, 
+                         project_error=project_error,
+                         show_fast_modal=show_fast_modal,
+                         show_main_modal=show_main_modal)
+
 @fichiers_bp.route('/upload', methods=['POST'])
 def upload_file():
     session.clear() # Clear session to avoid conflicts with previous uploads
     if 'file' not in request.files or 'file2' not in request.files:
-        flash("Veuillez sélectionner les deux fichiers", "error")
-        return redirect(url_for('projets.index'))
+        return render_index_with_errors(project_error="Veuillez sélectionner les deux fichiers", show_main_modal=True)
 
     file = request.files['file']
     file2 = request.files['file2']
 
-    if file.filename == '' or file2.filename == '':
-        flash("Un des fichiers est vide", "error")
-        return redirect(url_for('projets.index'))
+    if file.filename == '':
+        return render_index_with_errors(file1_error="Aucun fichier sélectionné", show_main_modal=True)
+    if file2.filename == '':
+        return render_index_with_errors(file2_error="Vous n'avez pas sélectionné le 2ème fichier", show_main_modal=True)
+
 
     # Get form values
     nom_projet = request.form.get('name')
@@ -35,10 +47,9 @@ def upload_file():
     
 
     try:
-        date_execution = datetime.now().date()
+        date_execution = datetime.now()
     except Exception as e:
-        flash(f"Date invalide : {e}", "error")
-        return redirect(url_for('projets.index'))
+        return render_index_with_errors(project_error=f"Date invalide : {e}", show_main_modal=True)
 
     # Save files to archive directory with renamed format
     archive_folder = os.path.join('uploads', 'archive')
@@ -51,8 +62,7 @@ def upload_file():
     if projet_existant_id:
         projet = Projet.query.get(int(projet_existant_id))
         if not projet:
-            flash("Projet sélectionné introuvable", "error")
-            return redirect(url_for('projets.index'))
+            return render_index_with_errors(project_error="Projet sélectionné introuvable", show_main_modal=True)
         actual_project_name = projet.nom_projet
         
         # Ajouter une trace dans logs_execution pour l'utilisation d'un projet existant
@@ -65,8 +75,7 @@ def upload_file():
         db.session.commit()
     else:
         if not nom_projet:
-            flash("Veuillez saisir un nom de projet ou en sélectionner un existant.", "error")
-            return redirect(url_for('projets.index'))
+            return render_index_with_errors(project_error="Veuillez saisir un nom de projet ou en sélectionner un existant.", show_main_modal=True)
         actual_project_name = nom_projet
 
         projet = Projet(
@@ -122,6 +131,55 @@ def upload_file():
               pd.read_excel(filepath2) if file2.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath2))
         print("Colonnes fichier 1 après lecture :", df.columns.tolist())
         print("Colonnes fichier 2 après lecture :", df2.columns.tolist())
+        
+        # Vérifier si les fichiers sont vides
+        # Un fichier est considéré comme vide s'il n'a pas de données (même avec des en-têtes)
+        file1_empty = df.empty or len(df) == 0 or df.shape[0] == 0
+        file2_empty = df2.empty or len(df2) == 0 or df2.shape[0] == 0
+        
+        if file1_empty and file2_empty:
+            # Les deux fichiers sont vides
+            try:
+                log = LogExecution(
+                    projet_id=projet.id,
+                    statut='échec',
+                    message=f"Les deux fichiers sont vides pour le projet {actual_project_name}: {file.filename} et {file2.filename}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                db.session.rollback()
+                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            return render_index_with_errors(file1_error="Le fichier est vide", file2_error="Le fichier est vide", show_main_modal=True)
+        elif file1_empty:
+            # Seul le premier fichier est vide
+            try:
+                log = LogExecution(
+                    projet_id=projet.id,
+                    statut='échec',
+                    message=f"Le premier fichier est vide pour le projet {actual_project_name}: {file.filename}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                db.session.rollback()
+                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            return render_index_with_errors(file1_error="Le premier fichier est vide", show_main_modal=True)
+        elif file2_empty:
+            # Seul le deuxième fichier est vide
+            try:
+                log = LogExecution(
+                    projet_id=projet.id,
+                    statut='échec',
+                    message=f"Le deuxième fichier est vide pour le projet {actual_project_name}: {file2.filename}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                db.session.rollback()
+                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            return render_index_with_errors(file2_error="Le deuxième fichier est vide", show_main_modal=True)
+            
     except Exception as e:
         # Ajouter une trace d'échec dans logs_execution
         log = LogExecution(
@@ -132,8 +190,7 @@ def upload_file():
         db.session.add(log)
         db.session.commit()
         
-        flash(f"Erreur de lecture : {e}", "error")
-        return redirect(url_for('projets.index'))
+        return render_index_with_errors(project_error=f"Erreur de lecture : {e}", show_main_modal=True)
 
     # Chemin du dossier temporaire
     temp_folder = os.path.join(os.getcwd(), "temp")
@@ -178,19 +235,68 @@ def fast_upload():
     session.clear()  # Nettoyer la session
 
     if 'file_fast_upload' not in request.files or 'file_fast_upload2' not in request.files:
-        flash("Veuillez sélectionner les deux fichiers", "error")
-        return redirect(url_for('projets.index'))
+        return render_index_with_errors(project_error="Veuillez sélectionner les deux fichiers", show_fast_modal=True)
 
     file = request.files['file_fast_upload']
     file2 = request.files['file_fast_upload2']
 
-    if file.filename == '' or file2.filename == '':
-        flash("Un des fichiers est vide", "error")
-        return redirect(url_for('projets.index'))
+    if file.filename == '':
+        return render_index_with_errors(file1_error="Vous n'avez pas sélectionné le 1er fichier", show_fast_modal=True)
+    if file2.filename == '':
+        return render_index_with_errors(file2_error="Vous n'avez pas sélectionné le 2ème fichier", show_fast_modal=True)
 
     try:
         df = read_uploaded_file(file)
         df2 = read_uploaded_file(file2)
+        
+        # Vérifier si les fichiers sont vides
+        # Un fichier est considéré comme vide s'il n'a pas de données (même avec des en-têtes)
+        file1_empty = df.empty or len(df) == 0 or df.shape[0] == 0
+        file2_empty = df2.empty or len(df2) == 0 or df2.shape[0] == 0
+        
+        if file1_empty and file2_empty:
+            # Les deux fichiers sont vides
+            try:
+                log = LogExecution(
+                    projet_id=None,  # Pas de projet pour les tests rapides
+                    statut='échec',
+                    message=f"Test rapide: Les deux fichiers sont vides - {file.filename} et {file2.filename}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                db.session.rollback()
+                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            return render_index_with_errors(file1_error="Le fichier est vide", file2_error="Le fichier est vide", show_fast_modal=True)
+        elif file1_empty:
+            # Seul le premier fichier est vide
+            try:
+                log = LogExecution(
+                    projet_id=None,  # Pas de projet pour les tests rapides
+                    statut='échec',
+                    message=f"Test rapide: Le premier fichier est vide - {file.filename}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                db.session.rollback()
+                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            return render_index_with_errors(file1_error="Le premier fichier est vide", show_fast_modal=True)
+        elif file2_empty:
+            # Seul le deuxième fichier est vide
+            try:
+                log = LogExecution(
+                    projet_id=None,  # Pas de projet pour les tests rapides
+                    statut='échec',
+                    message=f"Test rapide: Le deuxième fichier est vide - {file2.filename}"
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                db.session.rollback()
+                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            return render_index_with_errors(file2_error="Le deuxième fichier est vide", show_fast_modal=True)
+            
     except Exception as e:
         # Ajouter une trace d'échec pour le test rapide
         log = LogExecution(
@@ -201,8 +307,7 @@ def fast_upload():
         db.session.add(log)
         db.session.commit()
         
-        flash(f"Erreur lors de la lecture des fichiers : {e}", "error")
-        return redirect(url_for('projets.index'))
+        return render_index_with_errors(project_error=f"Erreur lors de la lecture des fichiers : {e}", show_fast_modal=True)
 
     # ✅ Créer le dossier temp si non existant
     temp_folder = os.path.join(os.getcwd(), "temp")

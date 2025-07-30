@@ -5,7 +5,7 @@ class Projet(db.Model):
     __tablename__ = 'projets'
     id = db.Column(db.Integer, primary_key=True)
     nom_projet = db.Column(db.String(255), nullable=False)
-    date_creation = db.Column(db.Date, default=lambda: datetime.utcnow().date())
+    date_creation = db.Column(db.DateTime,default=datetime.utcnow())
     fichier_1 = db.Column(db.String(255))
     fichier_2 = db.Column(db.String(255))
     emplacement_source = db.Column(db.String(255))

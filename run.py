@@ -141,8 +141,14 @@ def start_cleanup_timer():
 app = create_app()
 
 if __name__ == '__main__':
+    # 1. Récupérer l'environnement (développement, production...)
+    env = os.getenv('FLASK_ENV', 'development')
+
+    # 2. Créer l'app avec la config adaptée
+    app = create_app(env)
+
     with app.app_context():
-        # 1. Exécuter les migrations automatiques en premier
+        # 3. Lancer auto migration seulement si configuré
         print("🔄 Initialisation des migrations automatiques...")
         try:
             init_auto_migration(app)
@@ -150,19 +156,18 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"❌ Erreur lors des migrations automatiques: {e}")
             print("⚠️ L'application va continuer mais certaines fonctionnalités peuvent ne pas fonctionner")
-        
-        # 2. Créer les tables si nécessaire (fallback)
+
+        # 4. Fallback : créer les tables si besoin (pas idéal en prod)
         try:
             db.create_all()
             print("✅ Tables de base de données vérifiées")
         except Exception as e:
             print(f"❌ Erreur lors de la création des tables: {e}")
-    
-    # 3. Démarrer le service de nettoyage automatique
+
+    # 5. Démarrer le nettoyage périodique
     print(f"🧹 Démarrage du service de nettoyage automatique")
     start_cleanup_timer()
-    
-    # 4. Démarrer l'application Flask
-    print("🚀 Démarrage de l'application DataAlign...")
-    app.run(debug=True)
 
+    # 6. Démarrer l'app Flask
+    print("🚀 Démarrage de l'application DataAlign...")
+    app.run(debug=(env=='development'))

@@ -1,10 +1,15 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from io import StringIO
 import pandas as pd
+import os
 from app import db
 from app.models import Projet, ConfigurationCleComposee, StatistiqueEcart
+from app.models.logs import LogExecution
+from app.models.fichier_genere import FichierGenere
 from app.services.comparateur import ComparateurFichiers
-from datetime import datetime
+from app.services.generateur_excel import GenerateurExcel
+from app.services.generateur_pdf import GenerateurPdf
+from datetime import datetime, timedelta
 
 comparaison_bp = Blueprint('comparaison', __name__)
 
@@ -77,6 +82,116 @@ def compare():
     db.session.add(stat)
 
     db.session.commit()
+
+    # Auto-generate Excel and PDF files and save them to archive
+    project_folder = session.get('project_folder')
+    
+    # If project_folder not in session, get it from database
+    if not project_folder and projet_id:
+        projet = Projet.query.get(projet_id)
+        if projet and projet.emplacement_archive:
+            project_folder = projet.emplacement_archive
+    
+    if project_folder and os.path.exists(project_folder):
+        try:
+            # Generate Excel file
+            generateur_excel = GenerateurExcel(
+                results['ecarts_fichier1'], 
+                results['ecarts_fichier2'], 
+                results['communs'],
+                project_folder
+            )
+            
+            # Save Excel file to project archive folder
+            excel_filename = f"rapport_comparaison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            excel_path = os.path.join(project_folder, excel_filename)
+            generateur_excel.generer_rapport_fichier(excel_path)
+            
+            # Generate PDF file
+            generateur_pdf = GenerateurPdf(
+                results['ecarts_fichier1'],
+                results['ecarts_fichier2'],
+                file1_name,
+                file2_name,
+                len(df),
+                len(df2),
+                results['n_common'],
+                project_folder
+            )
+            
+            # Save PDF file to project archive folder
+            pdf_filename = f"rapport_comparaison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            pdf_path = os.path.join(project_folder, pdf_filename)
+            generateur_pdf.generer_pdf_fichier(pdf_path)
+            
+            # Log success for file generation
+            log = LogExecution(
+                projet_id=projet_id,
+                statut='succès',
+                message=f"Rapports Excel et PDF générés automatiquement - {results['n_common']} enregistrements communs, {len(results['ecarts_fichier1'])} écarts fichier 1, {len(results['ecarts_fichier2'])} écarts fichier 2"
+            )
+            db.session.add(log)
+            
+            # Save generated files info to database
+            projet = Projet.query.get(projet_id)
+            if projet:
+                # Check if there's already a recent treatment (within 5 minutes) for this project
+                cutoff_time = datetime.now() - timedelta(minutes=5)
+                
+                fichier_existant = FichierGenere.query.filter(
+                    FichierGenere.projet_id == projet_id,
+                    FichierGenere.date_execution >= cutoff_time
+                ).order_by(FichierGenere.date_execution.desc()).first()
+                
+                if fichier_existant:
+                    # Update existing record with new files
+                    fichier_existant.nom_fichier_excel = excel_filename
+                    fichier_existant.nom_fichier_pdf = pdf_filename
+                    fichier_existant.nom_fichier_graphe = "pie_chart.png"
+                    fichier_existant.date_execution = datetime.now()
+                else:
+                    # Create new treatment record
+                    nom_traitement = f"Traitement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    fichier_genere = FichierGenere(
+                        projet_id=projet_id,
+                        nom_traitement_projet=nom_traitement,
+                        nom_fichier_excel=excel_filename,
+                        nom_fichier_pdf=pdf_filename,
+                        nom_fichier_graphe="pie_chart.png",
+                        chemin_archive=projet.emplacement_archive,
+                        date_execution=datetime.now()
+                    )
+                    db.session.add(fichier_genere)
+            
+            db.session.commit()
+            
+            # Add flash message to inform user that files were auto-generated
+            flash(f"Rapport de comparaison terminé ! Les fichiers Excel et PDF ont été automatiquement sauvegardés dans le dossier d'archive du projet.", "success")
+            
+        except Exception as e:
+            # Log failure for file generation
+            log = LogExecution(
+                projet_id=projet_id,
+                statut='échec',
+                message=f"Échec génération automatique des rapports: {str(e)}"
+            )
+            db.session.add(log)
+            db.session.commit()
+            
+            # Don't fail the comparison, just log the error
+            print(f"Erreur lors de la génération automatique des fichiers: {e}")
+    else:
+        # Log when project folder is not available
+        log = LogExecution(
+            projet_id=projet_id,
+            statut='échec',
+            message=f"Impossible de générer les rapports automatiquement: dossier projet non trouvé"
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        # Add flash message to inform user
+        flash("Comparaison terminée, mais les rapports n'ont pas pu être sauvegardés automatiquement. Utilisez les boutons de téléchargement pour obtenir les fichiers.", "warning")
 
     return render_template("compare.html",
                            key1=' + '.join(keys1),

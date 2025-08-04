@@ -100,3 +100,53 @@ class GenerateurPdf:
         os.remove(temp_html_path)
 
         return response
+    
+    def generer_pdf_fichier(self, file_path):
+        """Generate PDF report and save to specified file path"""
+        chart_path = self.generer_graphique()
+        
+        # Get absolute paths for images for wkhtmltopdf
+        logo_path_abs = os.path.abspath(os.path.join('app/static', 'sofrecom.png'))
+        chart_path_abs = os.path.abspath(chart_path)
+
+        # Convert DataFrames to dict and handle empty cases
+        ecarts1_records = self.ecarts1.to_dict(orient='records') if not self.ecarts1.empty else []
+        ecarts2_records = self.ecarts2.to_dict(orient='records') if not self.ecarts2.empty else []
+        
+        # Get column names safely
+        ecarts1_columns = list(self.ecarts1.columns) if not self.ecarts1.empty else []
+        ecarts2_columns = list(self.ecarts2.columns) if not self.ecarts2.empty else []
+
+        rendered_html = render_template('report.html',
+            file1_name=self.file1_name,
+            file2_name=self.file2_name,
+            ecarts1=ecarts1_records,
+            ecarts2=ecarts2_records,
+            ecarts1_columns=ecarts1_columns,
+            ecarts2_columns=ecarts2_columns,
+            total1=self.total1,
+            total2=self.total2,
+            lignes_communes=self.communes,
+            logo_path='file:///' + logo_path_abs.replace('\\', '/'),
+            chart_path='file:///' + chart_path_abs.replace('\\', '/')
+        )
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.html') as f:
+            f.write(rendered_html.encode('utf-8'))
+            temp_html_path = f.name
+
+        config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+
+        try:
+            options = { 'enable-local-file-access': '' }
+            pdf = pdfkit.from_file(temp_html_path, False, configuration=config, options=options)
+        except Exception as e:
+            raise Exception(f"Erreur lors de la génération du PDF : {e}")
+
+        # Save PDF to specified file path
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, 'wb') as f:
+            f.write(pdf)
+
+        # Clean up temp file
+        os.remove(temp_html_path)

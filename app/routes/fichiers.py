@@ -81,8 +81,8 @@ def upload_file():
         projet = Projet(
             nom_projet=nom_projet,
             date_creation=date_execution,
-            fichier_1="",  # Will be updated after file saving
-            fichier_2="",  # Will be updated after file saving
+            fichier_1=file.filename,  # Set original filename initially
+            fichier_2=file2.filename,  # Set original filename initially
             emplacement_source="",  # Will be updated after directory creation
             emplacement_archive=""  # Will be updated after directory creation
         )
@@ -122,6 +122,12 @@ def upload_file():
         projet.emplacement_source = project_folder
         projet.emplacement_archive = project_folder
         db.session.commit()
+    else:
+        # For existing projects, update the folder paths if they're empty
+        if not projet.emplacement_source or not projet.emplacement_archive:
+            projet.emplacement_source = project_folder
+            projet.emplacement_archive = project_folder
+            db.session.commit()
 
     # Read the saved files into DataFrames
     try:

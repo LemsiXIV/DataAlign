@@ -294,6 +294,21 @@
 
     <!-- table start section -->
 
+    {% if is_large_files %}
+    <!-- Large file notification -->
+    <section class="py-4 px-4">
+        <div class="max-w-screen-xl mx-auto">
+            <div class="p-4 mb-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400" role="alert">
+                <span class="font-medium">📊 Large Files Detected!</span> 
+                One or both of your files are large 
+                {% if file1_info %}(File 1: {{ "{:,}".format(file1_info.total_rows) }} rows, {{ file1_info.total_columns }} columns){% endif %}
+                {% if file2_info %}(File 2: {{ "{:,}".format(file2_info.total_rows) }} rows, {{ file2_info.total_columns }} columns){% endif %}.
+                The system will use optimized processing to handle them efficiently. Only a preview is shown below, but the full comparison will process all data.
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
     <section class="py-10 px-4">
         <div class="flex flex-col md:flex-row gap-4">
 

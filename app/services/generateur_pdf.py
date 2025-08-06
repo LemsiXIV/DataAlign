@@ -1,4 +1,8 @@
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
+# Ensure matplotlib doesn't try to use any GUI elements
+plt.ioff()  # Turn off interactive mode
 import os
 import tempfile
 import pdfkit
@@ -26,21 +30,25 @@ class GenerateurPdf:
         sizes = [only1, only2, self.communes]
         colors = ['#FF9999', '#66B3FF', '#99FF99']
 
-        plt.figure(figsize=(6, 6))
-        plt.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=140)
-        plt.axis('equal')
-        
-        # Sauvegarder dans le dossier static pour l'affichage
-        chart_path = os.path.join('app/static', 'pie_chart.png')
-        plt.savefig(chart_path, bbox_inches='tight')
-        
-        # Sauvegarder aussi dans le dossier du projet si disponible
-        if self.project_folder and os.path.exists(self.project_folder):
-            project_chart_path = os.path.join(self.project_folder, 'pie_chart.png')
-            plt.savefig(project_chart_path, bbox_inches='tight')
-        
-        plt.close()
-        
+        # Create figure and ensure proper cleanup
+        fig = plt.figure(figsize=(6, 6))
+        try:
+            plt.pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=140)
+            plt.axis('equal')
+            
+            # Sauvegarder dans le dossier static pour l'affichage
+            chart_path = os.path.join('app/static', 'pie_chart.png')
+            plt.savefig(chart_path, bbox_inches='tight', dpi=100)
+            
+            # Sauvegarder aussi dans le dossier du projet si disponible
+            if self.project_folder and os.path.exists(self.project_folder):
+                project_chart_path = os.path.join(self.project_folder, 'pie_chart.png')
+                plt.savefig(project_chart_path, bbox_inches='tight', dpi=100)
+        finally:
+            # Ensure figure is always closed to prevent memory leaks
+            plt.close(fig)
+            plt.clf()  # Clear the current figure
+            
         return chart_path
         
     def generer_pdf(self):
@@ -150,3 +158,14 @@ class GenerateurPdf:
 
         # Clean up temp file
         os.remove(temp_html_path)
+
+    @staticmethod
+    def cleanup_matplotlib():
+        """Clean up matplotlib resources to prevent threading issues"""
+        try:
+            plt.close('all')
+            plt.clf()
+            import gc
+            gc.collect()
+        except Exception:
+            pass  # Ignore any cleanup errors

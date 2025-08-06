@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, send_file
 from io import StringIO
 import pandas as pd
 import os
@@ -9,9 +9,11 @@ from app.models import Projet
 from app.models.logs import LogExecution
 from app.models.fichier_genere import FichierGenere
 from app.services.lecteur_fichier import read_uploaded_file
+from app.services.lecteur_fichier_optimise import read_uploaded_file_optimized, LecteurFichierOptimise
 from app.services.generateur_excel import GenerateurExcel
 from app.services.generateur_pdf import GenerateurPdf
 from app.services.comparateur import ComparateurFichiers
+from app.services.comparateur_optimise import ComparateurFichiersOptimise, compare_large_files
 
 fichiers_bp = Blueprint('fichiers', __name__)
 
@@ -40,11 +42,9 @@ def upload_file():
     if file2.filename == '':
         return render_index_with_errors(file2_error="Vous n'avez pas sélectionné le 2ème fichier", show_main_modal=True)
 
-
     # Get form values
     nom_projet = request.form.get('name')
     projet_existant_id = request.form.get('existing_project')
-    
 
     try:
         date_execution = datetime.now()
@@ -53,7 +53,7 @@ def upload_file():
 
     # Save files to archive directory with renamed format
     archive_folder = os.path.join('uploads', 'archive')
-    os.makedirs(archive_folder, exist_ok=True)  # Create archive folder if it doesn't exist
+    os.makedirs(archive_folder, exist_ok=True)
     
     # Generate datetime string for file naming
     datetime_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -65,7 +65,7 @@ def upload_file():
             return render_index_with_errors(project_error="Projet sélectionné introuvable", show_main_modal=True)
         actual_project_name = projet.nom_projet
         
-        # Ajouter une trace dans logs_execution pour l'utilisation d'un projet existant
+        # Log for existing project
         log = LogExecution(
             projet_id=projet.id,
             statut='succès',
@@ -81,15 +81,15 @@ def upload_file():
         projet = Projet(
             nom_projet=nom_projet,
             date_creation=date_execution,
-            fichier_1=file.filename,  # Set original filename initially
-            fichier_2=file2.filename,  # Set original filename initially
-            emplacement_source="",  # Will be updated after directory creation
-            emplacement_archive=""  # Will be updated after directory creation
+            fichier_1=file.filename,
+            fichier_2=file2.filename,
+            emplacement_source="",
+            emplacement_archive=""
         )
         db.session.add(projet)
         db.session.commit()
         
-        # Ajouter une trace dans logs_execution pour la création du projet
+        # Log for new project
         log = LogExecution(
             projet_id=projet.id,
             statut='succès',
@@ -98,12 +98,12 @@ def upload_file():
         db.session.add(log)
         db.session.commit()
 
-    # Create project-specific directory within archive using actual project name
+    # Create project directory
     project_dir_name = f"{actual_project_name}_{datetime_str}"
     project_folder = os.path.join(archive_folder, project_dir_name)
     os.makedirs(project_folder, exist_ok=True)
     
-    # Create new filenames with format: original_name_datetime_original.extension
+    # Create new filenames
     file1_name, file1_ext = os.path.splitext(file.filename)
     file2_name, file2_ext = os.path.splitext(file2.filename)
     
@@ -129,65 +129,101 @@ def upload_file():
             projet.emplacement_archive = project_folder
             db.session.commit()
 
-    # Read the saved files into DataFrames
+    # Read files using optimized approach
     try:
-        df = pd.read_csv(filepath) if file.filename.endswith('.csv') else (
-             pd.read_excel(filepath) if file.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath))
-        df2 = pd.read_csv(filepath2) if file2.filename.endswith('.csv') else (
-              pd.read_excel(filepath2) if file2.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath2))
-        print("Colonnes fichier 1 après lecture :", df.columns.tolist())
-        print("Colonnes fichier 2 après lecture :", df2.columns.tolist())
+        lecteur = LecteurFichierOptimise()
         
-        # Vérifier si les fichiers sont vides
-        # Un fichier est considéré comme vide s'il n'a pas de données (même avec des en-têtes)
+        # Get file info to determine if files are large
+        file1_info = lecteur.read_file_info(filepath)
+        file2_info = lecteur.read_file_info(filepath2)
+        
+        # Determine if files are large (over 5k rows or 50 columns)
+        is_large_file1 = file1_info['total_rows'] > 5000 or file1_info['total_columns'] > 50
+        is_large_file2 = file2_info['total_rows'] > 5000 or file2_info['total_columns'] > 50
+        
+        print(f"File 1 info: {file1_info['total_rows']} rows, {file1_info['total_columns']} columns")
+        print(f"File 2 info: {file2_info['total_rows']} rows, {file2_info['total_columns']} columns")
+        
+        if is_large_file1 or is_large_file2:
+            # For large files, get small samples for preview only
+            print("Large files detected - using optimized processing")
+            df = lecteur.get_file_sample(filepath, 100)  # Very small sample
+            df2 = lecteur.get_file_sample(filepath2, 100)  # Very small sample
+            
+            # Store minimal info in session
+            session['is_large_files'] = True
+            session['file1_info'] = {
+                'total_rows': file1_info['total_rows'],
+                'total_columns': file1_info['total_columns']
+            }
+            session['file2_info'] = {
+                'total_rows': file2_info['total_rows'], 
+                'total_columns': file2_info['total_columns']
+            }
+            session['file1_path'] = filepath
+            session['file2_path'] = filepath2
+            
+            print(f"Using samples: {len(df)} and {len(df2)} rows for preview")
+            
+        else:
+            # For smaller files, read normally
+            df = pd.read_csv(filepath) if file.filename.endswith('.csv') else (
+                 pd.read_excel(filepath) if file.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath))
+            df2 = pd.read_csv(filepath2) if file2.filename.endswith('.csv') else (
+                  pd.read_excel(filepath2) if file2.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath2))
+            session['is_large_files'] = False
+            
+            # Store in temporary files only for small files
+            temp_folder = os.path.join(os.getcwd(), "temp")
+            os.makedirs(temp_folder, exist_ok=True)
+            
+            df_id = str(uuid.uuid4())
+            df2_id = str(uuid.uuid4())
+            df_path = os.path.join("temp", f"{df_id}.json")
+            df2_path = os.path.join("temp", f"{df2_id}.json")
+
+            df.to_json(df_path, orient="records", force_ascii=False)
+            df2.to_json(df2_path, orient="records", force_ascii=False)
+            
+            session['df_path'] = df_path
+            session['df2_path'] = df2_path
+        
+        print("Colonnes fichier 1 après lecture :", df.columns.tolist()[:10])  # Only show first 10
+        print("Colonnes fichier 2 après lecture :", df2.columns.tolist()[:10])  # Only show first 10
+        
+        # Check if files are empty
         file1_empty = df.empty or len(df) == 0 or df.shape[0] == 0
         file2_empty = df2.empty or len(df2) == 0 or df2.shape[0] == 0
         
         if file1_empty and file2_empty:
-            # Les deux fichiers sont vides
-            try:
-                log = LogExecution(
-                    projet_id=projet.id,
-                    statut='échec',
-                    message=f"Les deux fichiers sont vides pour le projet {actual_project_name}: {file.filename} et {file2.filename}"
-                )
-                db.session.add(log)
-                db.session.commit()
-            except Exception as log_error:
-                db.session.rollback()
-                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            log = LogExecution(
+                projet_id=projet.id,
+                statut='échec',
+                message=f"Les deux fichiers sont vides pour le projet {actual_project_name}"
+            )
+            db.session.add(log)
+            db.session.commit()
             return render_index_with_errors(file1_error="Le fichier est vide", file2_error="Le fichier est vide", show_main_modal=True)
         elif file1_empty:
-            # Seul le premier fichier est vide
-            try:
-                log = LogExecution(
-                    projet_id=projet.id,
-                    statut='échec',
-                    message=f"Le premier fichier est vide pour le projet {actual_project_name}: {file.filename}"
-                )
-                db.session.add(log)
-                db.session.commit()
-            except Exception as log_error:
-                db.session.rollback()
-                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            log = LogExecution(
+                projet_id=projet.id,
+                statut='échec',
+                message=f"Le premier fichier est vide pour le projet {actual_project_name}"
+            )
+            db.session.add(log)
+            db.session.commit()
             return render_index_with_errors(file1_error="Le premier fichier est vide", show_main_modal=True)
         elif file2_empty:
-            # Seul le deuxième fichier est vide
-            try:
-                log = LogExecution(
-                    projet_id=projet.id,
-                    statut='échec',
-                    message=f"Le deuxième fichier est vide pour le projet {actual_project_name}: {file2.filename}"
-                )
-                db.session.add(log)
-                db.session.commit()
-            except Exception as log_error:
-                db.session.rollback()
-                print(f"Erreur lors de l'enregistrement du log: {log_error}")
+            log = LogExecution(
+                projet_id=projet.id,
+                statut='échec',
+                message=f"Le deuxième fichier est vide pour le projet {actual_project_name}"
+            )
+            db.session.add(log)
+            db.session.commit()
             return render_index_with_errors(file2_error="Le deuxième fichier est vide", show_main_modal=True)
             
     except Exception as e:
-        # Ajouter une trace d'échec dans logs_execution
         log = LogExecution(
             projet_id=projet.id,
             statut='échec',
@@ -195,32 +231,15 @@ def upload_file():
         )
         db.session.add(log)
         db.session.commit()
-        
         return render_index_with_errors(project_error=f"Erreur de lecture : {e}", show_main_modal=True)
 
-    # Chemin du dossier temporaire
-    temp_folder = os.path.join(os.getcwd(), "temp")
-    os.makedirs(temp_folder, exist_ok=True)  # ✅ Crée le dossier s'il n'existe pas
-
-
-    # Sauvegarde des dataframes dans des fichiers temporaires
-    df_id = str(uuid.uuid4())
-    df2_id = str(uuid.uuid4())
-    df_path = os.path.join("temp", f"{df_id}.json")
-    df2_path = os.path.join("temp", f"{df2_id}.json")
-
-    df.to_json(df_path, orient="records", force_ascii=False)
-    df2.to_json(df2_path, orient="records", force_ascii=False)
-
-    # Stocker uniquement les chemins
+    # Store session data
     session['projet_id'] = projet.id
-    session['df_path'] = df_path
-    session['df2_path'] = df2_path
     session['file1_name'] = file.filename
     session['file2_name'] = file2.filename
-    session['project_folder'] = project_folder  # Store project folder for Excel/PDF generation
+    session['project_folder'] = project_folder
 
-    # Ajouter une trace de succès final pour le traitement des fichiers
+    # Log success
     log = LogExecution(
         projet_id=projet.id,
         statut='succès',
@@ -234,11 +253,14 @@ def upload_file():
                            columns=df.columns.tolist(),
                            data2=df2.to_dict(orient='records'),
                            columns2=df2.columns.tolist(),
-                           form_action=url_for('comparaison.compare'))
+                           form_action=url_for('comparaison.compare'),
+                           is_large_files=session.get('is_large_files', False),
+                           file1_info=session.get('file1_info'),
+                           file2_info=session.get('file2_info'))
 
 @fichiers_bp.route('/fast_test', methods=['POST'])
 def fast_upload():
-    session.clear()  # Nettoyer la session
+    session.clear()
 
     if 'file_fast_upload' not in request.files or 'file_fast_upload2' not in request.files:
         return render_index_with_errors(project_error="Veuillez sélectionner les deux fichiers", show_fast_modal=True)
@@ -252,319 +274,126 @@ def fast_upload():
         return render_index_with_errors(file2_error="Vous n'avez pas sélectionné le 2ème fichier", show_fast_modal=True)
 
     try:
-        df = read_uploaded_file(file)
-        df2 = read_uploaded_file(file2)
+        # Use optimized file reader for fast tests
+        result1 = read_uploaded_file_optimized(file, max_preview_rows=100)  # Smaller preview
+        result2 = read_uploaded_file_optimized(file2, max_preview_rows=100)  # Smaller preview
         
-        # Vérifier si les fichiers sont vides
-        # Un fichier est considéré comme vide s'il n'a pas de données (même avec des en-têtes)
+        df = result1['data']
+        df2 = result2['data']
+        
+        # Store file information in session
+        session['is_large_files'] = result1['is_large_file'] or result2['is_large_file']
+        if result1['is_large_file']:
+            session['file1_path'] = result1['temp_path']
+            session['file1_info'] = {
+                'total_rows': result1['file_info']['total_rows'],
+                'total_columns': result1['file_info']['total_columns']
+            }
+        if result2['is_large_file']:
+            session['file2_path'] = result2['temp_path']
+            session['file2_info'] = {
+                'total_rows': result2['file_info']['total_rows'],
+                'total_columns': result2['file_info']['total_columns']
+            }
+        
+        # Check if files are empty
         file1_empty = df.empty or len(df) == 0 or df.shape[0] == 0
         file2_empty = df2.empty or len(df2) == 0 or df2.shape[0] == 0
         
         if file1_empty and file2_empty:
-            # Les deux fichiers sont vides
-            try:
-                log = LogExecution(
-                    projet_id=None,  # Pas de projet pour les tests rapides
-                    statut='échec',
-                    message=f"Test rapide: Les deux fichiers sont vides - {file.filename} et {file2.filename}"
-                )
-                db.session.add(log)
-                db.session.commit()
-            except Exception as log_error:
-                db.session.rollback()
-                print(f"Erreur lors de l'enregistrement du log: {log_error}")
             return render_index_with_errors(file1_error="Le fichier est vide", file2_error="Le fichier est vide", show_fast_modal=True)
         elif file1_empty:
-            # Seul le premier fichier est vide
-            try:
-                log = LogExecution(
-                    projet_id=None,  # Pas de projet pour les tests rapides
-                    statut='échec',
-                    message=f"Test rapide: Le premier fichier est vide - {file.filename}"
-                )
-                db.session.add(log)
-                db.session.commit()
-            except Exception as log_error:
-                db.session.rollback()
-                print(f"Erreur lors de l'enregistrement du log: {log_error}")
             return render_index_with_errors(file1_error="Le premier fichier est vide", show_fast_modal=True)
         elif file2_empty:
-            # Seul le deuxième fichier est vide
-            try:
-                log = LogExecution(
-                    projet_id=None,  # Pas de projet pour les tests rapides
-                    statut='échec',
-                    message=f"Test rapide: Le deuxième fichier est vide - {file2.filename}"
-                )
-                db.session.add(log)
-                db.session.commit()
-            except Exception as log_error:
-                db.session.rollback()
-                print(f"Erreur lors de l'enregistrement du log: {log_error}")
             return render_index_with_errors(file2_error="Le deuxième fichier est vide", show_fast_modal=True)
             
     except Exception as e:
-        # Ajouter une trace d'échec pour le test rapide
-        log = LogExecution(
-            projet_id=None,  # Pas de projet pour les tests rapides
-            statut='échec',
-            message=f"Erreur lors du test rapide avec fichiers {file.filename} et {file2.filename}: {str(e)}"
-        )
-        db.session.add(log)
-        db.session.commit()
-        
         return render_index_with_errors(project_error=f"Erreur lors de la lecture des fichiers : {e}", show_fast_modal=True)
 
-    # ✅ Créer le dossier temp si non existant
-    temp_folder = os.path.join(os.getcwd(), "temp")
-    os.makedirs(temp_folder, exist_ok=True)
+    # Create temp files for small files only
+    if not session.get('is_large_files', False):
+        temp_folder = os.path.join(os.getcwd(), "temp")
+        os.makedirs(temp_folder, exist_ok=True)
 
-    # ✅ Sauvegarder les DataFrame dans des fichiers temporaires
-    df_id = str(uuid.uuid4())
-    df2_id = str(uuid.uuid4())
-    df_path = os.path.join(temp_folder, f"{df_id}.json")
-    df2_path = os.path.join(temp_folder, f"{df2_id}.json")
+        df_id = str(uuid.uuid4())
+        df2_id = str(uuid.uuid4())
+        df_path = os.path.join(temp_folder, f"{df_id}.json")
+        df2_path = os.path.join(temp_folder, f"{df2_id}.json")
 
-    df.to_json(df_path, orient="records", force_ascii=False)
-    df2.to_json(df2_path, orient="records", force_ascii=False)
+        df.to_json(df_path, orient="records", force_ascii=False)
+        df2.to_json(df2_path, orient="records", force_ascii=False)
 
-    # ✅ Sauvegarder les chemins dans la session (léger)
-    session['df_path'] = df_path
-    session['df2_path'] = df2_path
+        session['df_path'] = df_path
+        session['df2_path'] = df2_path
+
     session['file1_name'] = file.filename
     session['file2_name'] = file2.filename
-
-    # Ajouter une trace de succès pour le test rapide
-    log = LogExecution(
-        projet_id=None,  # Pas de projet pour les tests rapides
-        statut='succès',
-        message=f"Test rapide réussi avec fichiers {file.filename} et {file2.filename} - {len(df)} et {len(df2)} lignes"
-    )
-    db.session.add(log)
-    db.session.commit()
 
     return render_template('index.html', 
                             data=df.to_dict(orient='records'), 
                             columns=df.columns.tolist(), 
                             data2=df2.to_dict(orient='records'), 
                             columns2=df2.columns.tolist(),
-                            form_action=url_for('comparaison.fast_compare'))
+                            form_action=url_for('comparaison.fast_compare'),
+                            is_large_files=session.get('is_large_files', False),
+                            file1_info=session.get('file1_info'),
+                            file2_info=session.get('file2_info'))
 
-@fichiers_bp.route('/download')
+# Debug route (remove in production)
+@fichiers_bp.route('/debug_session')
+def debug_session():
+    return f"Session data: {dict(session)}"
+
+@fichiers_bp.route('/download_excel')
 def download_excel():
-    projet_id = session.get('projet_id')
+    """Download comparison results as Excel file"""
     try:
-        # Load data from saved JSON files instead of session
-        df_path = session.get('df_path')
-        df2_path = session.get('df2_path')
+        from ..services.generateur_excel import generer_excel
         
-        if not df_path or not df2_path:
-            # Log d'échec pour données manquantes
-            log = LogExecution(
-                projet_id=projet_id,
-                statut='échec',
-                message="Échec génération Excel: Données non trouvées dans la session"
-            )
-            db.session.add(log)
-            db.session.commit()
+        # Check if we have comparison results in session
+        if 'resultats_comparaison' not in session:
+            flash('Aucun résultat de comparaison disponible pour le téléchargement.', 'error')
+            return redirect(url_for('fichiers.upload_file'))
+        
+        resultats = session['resultats_comparaison']
+        
+        # Generate Excel file
+        excel_path = generer_excel(resultats)
+        
+        if excel_path and os.path.exists(excel_path):
+            return send_file(excel_path, as_attachment=True, 
+                           download_name=f"comparaison_resultats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
+        else:
+            flash('Erreur lors de la génération du fichier Excel.', 'error')
+            return redirect(url_for('fichiers.upload_file'))
             
-            flash("Données non trouvées dans la session", "error")
-            return redirect(url_for('projets.index'))
-            
-        df = pd.read_json(df_path)
-        df2 = pd.read_json(df2_path)
     except Exception as e:
-        # Log d'échec pour erreur de chargement
-        log = LogExecution(
-            projet_id=projet_id,
-            statut='échec',
-            message=f"Échec génération Excel: Erreur lors du chargement des données - {str(e)}"
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        flash(f"Erreur lors du chargement des données pour export : {e}", "error")
-        return redirect(url_for('projets.index'))
-
-    keys1 = request.args.getlist('key1')
-    keys2 = request.args.getlist('key2')
-
-    if not keys1 or not keys2:
-        # Log d'échec pour clés manquantes
-        log = LogExecution(
-            projet_id=projet_id,
-            statut='échec',
-            message="Échec génération Excel: Clés de comparaison manquantes"
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        flash("Clés manquantes pour la génération du fichier", "error")
-        return redirect(url_for('projets.index'))
-
-    # Use comparator to get results
-    comparateur = ComparateurFichiers(df, df2, keys1, keys2)
-    results = comparateur.comparer()
-
-    # Generate Excel
-    generateur = GenerateurExcel(
-        results['ecarts_fichier1'], 
-        results['ecarts_fichier2'], 
-        results['communs'],
-        session.get('project_folder')  # Pass project folder for saving
-    )
-    
-    # Log de succès pour la génération Excel
-    log = LogExecution(
-        projet_id=projet_id,
-        statut='succès',
-        message=f"Rapport Excel généré avec succès - {results['n_common']} enregistrements communs, {len(results['ecarts_fichier1'])} écarts fichier 1, {len(results['ecarts_fichier2'])} écarts fichier 2"
-    )
-    db.session.add(log)
-    db.session.commit()
-    
-    # Enregistrer le fichier Excel généré dans la table fichiers_generes
-    if projet_id:
-        projet = Projet.query.get(projet_id)
-        if projet:
-            # Chercher s'il existe déjà un traitement récent (dans les 5 dernières minutes) pour ce projet
-            from datetime import timedelta
-            cutoff_time = datetime.now() - timedelta(minutes=5)
-            
-            fichier_existant = FichierGenere.query.filter(
-                FichierGenere.projet_id == projet_id,
-                FichierGenere.date_execution >= cutoff_time
-            ).order_by(FichierGenere.date_execution.desc()).first()
-            
-            if fichier_existant:
-                # Mettre à jour l'enregistrement existant avec le fichier Excel
-                fichier_existant.nom_fichier_excel = "rapport_comparaison.xlsx"
-                fichier_existant.date_execution = datetime.now()
-            else:
-                # Créer un nouveau traitement
-                nom_traitement = f"Traitement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                fichier_genere = FichierGenere(
-                    projet_id=projet_id,
-                    nom_traitement_projet=nom_traitement,
-                    nom_fichier_excel="rapport_comparaison.xlsx",
-                    chemin_archive=projet.emplacement_archive,
-                    date_execution=datetime.now()
-                )
-                db.session.add(fichier_genere)
-            
-            db.session.commit()
-    
-    return generateur.generer_rapport()
+        flash(f'Erreur lors du téléchargement: {str(e)}', 'error')
+        return redirect(url_for('fichiers.upload_file'))
 
 @fichiers_bp.route('/download_pdf')
 def download_pdf():
-    projet_id = session.get('projet_id')
+    """Download comparison results as PDF file"""
     try:
-        # Load data from saved JSON files instead of session
-        df_path = session.get('df_path')
-        df2_path = session.get('df2_path')
+        from ..services.generateur_pdf import generer_pdf
         
-        if not df_path or not df2_path:
-            # Log d'échec pour données manquantes
-            log = LogExecution(
-                projet_id=projet_id,
-                statut='échec',
-                message="Échec génération PDF: Données non trouvées dans la session"
-            )
-            db.session.add(log)
-            db.session.commit()
+        # Check if we have comparison results in session
+        if 'resultats_comparaison' not in session:
+            flash('Aucun résultat de comparaison disponible pour le téléchargement.', 'error')
+            return redirect(url_for('fichiers.upload_file'))
+        
+        resultats = session['resultats_comparaison']
+        
+        # Generate PDF file
+        pdf_path = generer_pdf(resultats)
+        
+        if pdf_path and os.path.exists(pdf_path):
+            return send_file(pdf_path, as_attachment=True,
+                           download_name=f"comparaison_resultats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
+        else:
+            flash('Erreur lors de la génération du fichier PDF.', 'error')
+            return redirect(url_for('fichiers.upload_file'))
             
-            flash("Données non trouvées dans la session", "error")
-            return redirect(url_for('projets.index'))
-            
-        df = pd.read_json(df_path)
-        df2 = pd.read_json(df2_path)
     except Exception as e:
-        # Log d'échec pour erreur de chargement
-        log = LogExecution(
-            projet_id=projet_id,
-            statut='échec',
-            message=f"Échec génération PDF: Erreur lors du chargement des données - {str(e)}"
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        flash(f"Erreur : {e}", "error")
-        return redirect(url_for('projets.index'))
-
-    keys1 = request.args.getlist('key1')
-    keys2 = request.args.getlist('key2')
-
-    # Use comparator to get results
-    comparateur = ComparateurFichiers(df, df2, keys1, keys2)
-    results = comparateur.comparer()
-
-    # Generate PDF
-    generateur = GenerateurPdf(
-        results['ecarts_fichier1'],
-        results['ecarts_fichier2'],
-        session.get('file1_name'),
-        session.get('file2_name'),
-        len(df),
-        len(df2),
-        results['n_common'],
-        session.get('project_folder')  # Pass project folder for saving
-    )
-    
-    try:
-        # Log de succès pour la génération PDF
-        log = LogExecution(
-            projet_id=projet_id,
-            statut='succès',
-            message=f"Rapport PDF généré avec succès - {results['n_common']} enregistrements communs, {len(results['ecarts_fichier1'])} écarts fichier 1, {len(results['ecarts_fichier2'])} écarts fichier 2"
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        # Enregistrer le fichier PDF généré dans la table fichiers_generes
-        if projet_id:
-            projet = Projet.query.get(projet_id)
-            if projet:
-                # Chercher s'il existe déjà un traitement récent (dans les 5 dernières minutes) pour ce projet
-                from datetime import timedelta
-                cutoff_time = datetime.now() - timedelta(minutes=5)
-                
-                fichier_existant = FichierGenere.query.filter(
-                    FichierGenere.projet_id == projet_id,
-                    FichierGenere.date_execution >= cutoff_time
-                ).order_by(FichierGenere.date_execution.desc()).first()
-                
-                if fichier_existant:
-                    # Mettre à jour l'enregistrement existant avec les fichiers PDF et graphique
-                    fichier_existant.nom_fichier_pdf = "rapport_comparaison.pdf"
-                    fichier_existant.nom_fichier_graphe = "pie_chart.png"
-                    fichier_existant.date_execution = datetime.now()
-                else:
-                    # Créer un nouveau traitement
-                    nom_traitement = f"Traitement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                    fichier_genere = FichierGenere(
-                        projet_id=projet_id,
-                        nom_traitement_projet=nom_traitement,
-                        nom_fichier_pdf="rapport_comparaison.pdf",
-                        nom_fichier_graphe="pie_chart.png",
-                        chemin_archive=projet.emplacement_archive,
-                        date_execution=datetime.now()
-                    )
-                    db.session.add(fichier_genere)
-                
-                db.session.commit()
-        
-        return generateur.generer_pdf()
-    except Exception as e:
-        # Log d'échec pour erreur de génération PDF avec plus de détails
-        error_details = f"{str(e)} - Écarts1: {len(results['ecarts_fichier1'])}, Écarts2: {len(results['ecarts_fichier2'])}, Communs: {results['n_common']}"
-        log = LogExecution(
-            projet_id=projet_id,
-            statut='échec',
-            message=f"Échec génération PDF: {error_details}"
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        flash(f"Erreur lors de la génération du PDF : {e}", "error")
-        return redirect(url_for('projets.index'))
+        flash(f'Erreur lors du téléchargement: {str(e)}', 'error')
+        return redirect(url_for('fichiers.upload_file'))

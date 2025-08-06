@@ -40,9 +40,11 @@ def create_app(config_name=None):
     from app.routes.projets import projets_bp
     from app.routes.comparaison import comparaison_bp
     from app.routes.fichiers import fichiers_bp
+    from app.routes.debug import debug_bp  # Temporary debug route
 
     app.register_blueprint(projets_bp)
     app.register_blueprint(comparaison_bp)
     app.register_blueprint(fichiers_bp)
+    app.register_blueprint(debug_bp)  # Temporary for debugging
 
     return app

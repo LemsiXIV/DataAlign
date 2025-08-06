@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Pending Deletion Requests - DataAlign{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Pending Deletion Requests</h1>
+        <p class="mt-2 text-gray-600">Review and approve project deletion requests from users</p>
+        <div class="mt-4">
+            <a href="{{ url_for('admin.dashboard') }}" class="text-blue-600 hover:text-blue-800">
+                ← Back to Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    {% if pending_requests %}
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requested</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Details</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for request in pending_requests %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-8 w-8">
+                                        <div class="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
+                                            <span class="text-xs font-medium text-gray-700">{{ request.user.username[0].upper() }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ request.user.full_name }}</div>
+                                        <div class="text-sm text-gray-500">@{{ request.user.username }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ request.project.nom }}</div>
+                                <div class="text-sm text-gray-500">ID: {{ request.project.id }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900 max-w-xs">
+                                    {% if request.reason %}
+                                        {{ request.reason }}
+                                    {% else %}
+                                        <span class="italic text-gray-500">No reason provided</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div>{{ request.created_at.strftime('%m/%d/%Y') }}</div>
+                                <div class="text-xs">{{ request.created_at.strftime('%H:%M') }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div class="space-y-1">
+                                    <div><strong>Created:</strong> {{ request.project.date_creation.strftime('%m/%d/%Y') }}</div>
+                                    <div><strong>Source:</strong> {{ request.project.fichier_source or 'N/A' }}</div>
+                                    <div><strong>Target:</strong> {{ request.project.fichier_cible or 'N/A' }}</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex flex-col space-y-2">
+                                    <!-- Approve Button -->
+                                    <form method="POST" action="{{ url_for('admin.approve_deletion', request_id=request.id) }}" class="inline">
+                                        <button type="submit" 
+                                                class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+                                                onclick="return confirm('Are you sure you want to approve this deletion? This will permanently delete the project.')">
+                                            ✓ Approve
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- Reject Button -->
+                                    <form method="POST" action="{{ url_for('admin.reject_deletion', request_id=request.id) }}" class="inline">
+                                        <button type="submit" 
+                                                class="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs"
+                                                onclick="return confirm('Are you sure you want to reject this deletion request?')">
+                                            ✗ Reject
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- View Project Button -->
+                                    <a href="{{ url_for('projets.voir_projet', id=request.project.id) }}" 
+                                       class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs text-center block">
+                                        👁 View Project
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6 text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No pending requests</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                All deletion requests have been processed. Check back later for new requests.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="mt-8 bg-gray-50 rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{{ url_for('admin.users') }}" 
+               class="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+                <div class="flex items-center">
+                    <svg class="h-6 w-6 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                    </svg>
+                    <span class="font-medium">Manage Users</span>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('projets.index') }}" 
+               class="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+                <div class="flex items-center">
+                    <svg class="h-6 w-6 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="font-medium">View All Projects</span>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('api.all_logs') }}" 
+               class="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+                <div class="flex items-center">
+                    <svg class="h-6 w-6 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="font-medium">System Logs</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh every 30 seconds to show new requests
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

@@ -1,11 +1,13 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager
 import os
 from .config import config
 
 db = SQLAlchemy()
 migrate = Migrate()
+login_manager = LoginManager()
 
 def create_app(config_name=None):
     app = Flask(__name__,
@@ -29,22 +31,38 @@ def create_app(config_name=None):
     # Initialisation extensions
     db.init_app(app)
     migrate.init_app(app, db)
+    
+    # Initialize Flask-Login
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+    login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
 
     # Import des modèles après init db (évite imports circulaires)
     from app.models import Projet, ConfigurationCleComposee
     from app.models.statistiques import StatistiqueEcart
     from app.models.fichier_genere import FichierGenere
     from app.models.logs import LogExecution
+    from app.models.user import User, DeletionRequest
+
+    # User loader for Flask-Login
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
 
     # Register blueprints
     from app.routes.projets import projets_bp
     from app.routes.comparaison import comparaison_bp
     from app.routes.fichiers import fichiers_bp
-    from app.routes.debug import debug_bp  # Temporary debug route
+    from app.routes.api import api_bp
+    from app.routes.auth import auth_bp
+    from app.routes.admin import admin_bp
 
     app.register_blueprint(projets_bp)
     app.register_blueprint(comparaison_bp)
     app.register_blueprint(fichiers_bp)
-    app.register_blueprint(debug_bp)  # Temporary for debugging
+    app.register_blueprint(api_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_bp)
 
     return app

@@ -249,14 +249,63 @@ def compare():
         if is_fast_test:
             flash("Comparaison rapide terminée ! Utilisez les boutons de téléchargement si vous souhaitez sauvegarder les résultats.", "info")
 
+    # Limit displayed results for performance (show only first 50 rows)
+    max_display_rows = 50
+    ecarts1_display = results['ecarts_fichier1'].head(max_display_rows).to_dict(orient='records')
+    ecarts2_display = results['ecarts_fichier2'].head(max_display_rows).to_dict(orient='records')
+    communs_display = results['communs'].head(max_display_rows).to_dict(orient='records')
+    
+    # Add info about truncated results
+    ecarts1_total = len(results['ecarts_fichier1'])
+    ecarts2_total = len(results['ecarts_fichier2'])
+    communs_total = len(results['communs'])
+    
+    # Create filtered results without the DataFrame objects to avoid conflicts
+    # Only include simple types that are JSON serializable
+    filtered_results = {
+        'total': results.get('total', 0),
+        'n1': results.get('n1', 0),
+        'n2': results.get('n2', 0),
+        'n_common': results.get('n_common', 0),
+        'total_ecarts': results.get('total_ecarts', 0),
+        'nb_df': results.get('nb_df', 0),
+        'nb_df2': results.get('nb_df2', 0),
+        'pct1': results.get('pct1', 0),
+        'pct2': results.get('pct2', 0),
+        'pct_both': results.get('pct_both', 0)
+    }
+    
+    # Store DataFrames in temporary files for download routes (avoid session size issues)
+    import tempfile
+    import pickle
+    
+    # Create temporary file for download results
+    temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl')
+    temp_results = {
+        'ecarts_fichier1': results['ecarts_fichier1'],
+        'ecarts_fichier2': results['ecarts_fichier2'],
+        'communs': results['communs']
+    }
+    pickle.dump(temp_results, temp_file)
+    temp_file.close()
+    
+    # Store only the file path in session (JSON serializable)
+    session['download_results_path'] = temp_file.name
+    session['resultats_comparaison'] = filtered_results  # Only stats, not DataFrames
+    
     return render_template("compare.html",
                            key1=' + '.join(keys1),
                            key2=' + '.join(keys2),
-                           ecarts1=results['ecarts_fichier1'].to_dict(orient='records'),
-                           ecarts2=results['ecarts_fichier2'].to_dict(orient='records'),
+                           ecarts1=ecarts1_display,
+                           ecarts2=ecarts2_display,
+                           communs=communs_display,
+                           ecarts1_total=ecarts1_total,
+                           ecarts2_total=ecarts2_total,
+                           communs_total=communs_total,
+                           max_display_rows=max_display_rows,
                            file1_name=file1_name,
                            file2_name=file2_name,
-                           **results)
+                           **filtered_results)
 
 @comparaison_bp.route('/Fast_Compare', methods=['POST'])
 def fast_compare():
@@ -318,11 +367,60 @@ def fast_compare():
         comparateur = ComparateurFichiers(df, df2, keys1, keys2)
         results = comparateur.comparer()
 
+    # Limit displayed results for performance (show only first 50 rows)
+    max_display_rows = 50
+    ecarts1_display = results['ecarts_fichier1'].head(max_display_rows).to_dict(orient='records')
+    ecarts2_display = results['ecarts_fichier2'].head(max_display_rows).to_dict(orient='records')
+    communs_display = results['communs'].head(max_display_rows).to_dict(orient='records')
+    
+    # Add info about truncated results
+    ecarts1_total = len(results['ecarts_fichier1'])
+    ecarts2_total = len(results['ecarts_fichier2'])
+    communs_total = len(results['communs'])
+    
+    # Create filtered results without the DataFrame objects to avoid conflicts
+    # Only include simple types that are JSON serializable
+    filtered_results = {
+        'total': results.get('total', 0),
+        'n1': results.get('n1', 0),
+        'n2': results.get('n2', 0),
+        'n_common': results.get('n_common', 0),
+        'total_ecarts': results.get('total_ecarts', 0),
+        'nb_df': results.get('nb_df', 0),
+        'nb_df2': results.get('nb_df2', 0),
+        'pct1': results.get('pct1', 0),
+        'pct2': results.get('pct2', 0),
+        'pct_both': results.get('pct_both', 0)
+    }
+
+    # Store DataFrames in temporary files for download routes (avoid session size issues)
+    import tempfile
+    import pickle
+    
+    # Create temporary file for download results
+    temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl')
+    temp_results = {
+        'ecarts_fichier1': results['ecarts_fichier1'],
+        'ecarts_fichier2': results['ecarts_fichier2'],
+        'communs': results['communs']
+    }
+    pickle.dump(temp_results, temp_file)
+    temp_file.close()
+    
+    # Store only the file path in session (JSON serializable)
+    session['download_results_path'] = temp_file.name
+    session['resultats_comparaison'] = filtered_results  # Only stats, not DataFrames
+
     return render_template("compare.html",
                            key1=' + '.join(keys1),
                            key2=' + '.join(keys2),
-                           ecarts1=results['ecarts_fichier1'].to_dict(orient='records'),
-                           ecarts2=results['ecarts_fichier2'].to_dict(orient='records'),
+                           ecarts1=ecarts1_display,
+                           ecarts2=ecarts2_display,
+                           communs=communs_display,
+                           ecarts1_total=ecarts1_total,
+                           ecarts2_total=ecarts2_total,
+                           communs_total=communs_total,
+                           max_display_rows=max_display_rows,
                            file1_name=session.get('file1_name', 'Fichier 1'),
                            file2_name=session.get('file2_name', 'Fichier 2'),
-                           **results)
+                           **filtered_results)

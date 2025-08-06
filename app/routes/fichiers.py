@@ -350,12 +350,22 @@ def download_excel():
     try:
         from ..services.generateur_excel import generer_excel
         
-        # Check if we have comparison results in session
-        if 'resultats_comparaison' not in session:
+        # Check if we have comparison results path in session
+        if 'download_results_path' not in session:
             flash('Aucun résultat de comparaison disponible pour le téléchargement.', 'error')
             return redirect(url_for('fichiers.upload_file'))
         
-        resultats = session['resultats_comparaison']
+        # Load DataFrames from temporary file
+        import pickle
+        import os
+        
+        temp_path = session['download_results_path']
+        if not os.path.exists(temp_path):
+            flash('Les résultats de comparaison ont expiré. Veuillez refaire la comparaison.', 'error')
+            return redirect(url_for('fichiers.upload_file'))
+        
+        with open(temp_path, 'rb') as f:
+            resultats = pickle.load(f)
         
         # Generate Excel file
         excel_path = generer_excel(resultats)
@@ -377,12 +387,22 @@ def download_pdf():
     try:
         from ..services.generateur_pdf import generer_pdf
         
-        # Check if we have comparison results in session
-        if 'resultats_comparaison' not in session:
+        # Check if we have comparison results path in session
+        if 'download_results_path' not in session:
             flash('Aucun résultat de comparaison disponible pour le téléchargement.', 'error')
             return redirect(url_for('fichiers.upload_file'))
         
-        resultats = session['resultats_comparaison']
+        # Load DataFrames from temporary file
+        import pickle
+        import os
+        
+        temp_path = session['download_results_path']
+        if not os.path.exists(temp_path):
+            flash('Les résultats de comparaison ont expiré. Veuillez refaire la comparaison.', 'error')
+            return redirect(url_for('fichiers.upload_file'))
+        
+        with open(temp_path, 'rb') as f:
+            resultats = pickle.load(f)
         
         # Generate PDF file
         pdf_path = generer_pdf(resultats)

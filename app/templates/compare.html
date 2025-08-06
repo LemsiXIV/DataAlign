@@ -44,6 +44,11 @@
         <div class="mb-4">
           <h3 class="text-base font-semibold text-red-600 dark:text-red-400 mb-1">
             📁 Données exclusives à : {{ file1_name }}
+            {% if ecarts1_total > max_display_rows %}
+            <span class="text-xs text-gray-500">({{ ecarts1_total }} total, {{ max_display_rows }} affichés)</span>
+            {% else %}
+            <span class="text-xs text-gray-500">({{ ecarts1_total }} total)</span>
+            {% endif %}
           </h3>
           <div class="overflow-x-auto max-w-full rounded border border-gray-200 dark:border-gray-700 max-h-64">
             <table class="w-full table-auto text-xs">
@@ -69,6 +74,9 @@
               </tbody>
             </table>
           </div>
+          {% if ecarts1_total > max_display_rows %}
+          <p class="text-xs text-gray-500 mt-2">📥 Utilisez le téléchargement Excel/PDF pour voir tous les {{ ecarts1_total }} résultats</p>
+          {% endif %}
         </div>
         {% else %}
         <p class="text-green-600 text-sm">✅ Aucune donnée exclusive à {{ file1_name }}.</p>
@@ -78,6 +86,11 @@
         <div class="mb-4">
           <h3 class="text-base font-semibold text-blue-600 dark:text-blue-400 mb-1">
             📁 Données exclusives à : {{ file2_name }}
+            {% if ecarts2_total > max_display_rows %}
+            <span class="text-xs text-gray-500">({{ ecarts2_total }} total, {{ max_display_rows }} affichés)</span>
+            {% else %}
+            <span class="text-xs text-gray-500">({{ ecarts2_total }} total)</span>
+            {% endif %}
           </h3>
           <div class="overflow-x-auto max-w-full rounded border border-gray-200 dark:border-gray-700 max-h-64">
             <table class="w-full table-auto text-xs">
@@ -103,6 +116,9 @@
               </tbody>
             </table>
           </div>
+          {% if ecarts2_total > max_display_rows %}
+          <p class="text-xs text-gray-500 mt-2">📥 Utilisez le téléchargement Excel/PDF pour voir tous les {{ ecarts2_total }} résultats</p>
+          {% endif %}
         </div>
         {% else %}
         <p class="text-green-600 text-sm">✅ Aucune donnée exclusive à {{ file2_name }}.</p>

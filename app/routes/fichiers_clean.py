@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from flask_login import current_user
 from io import StringIO
 import pandas as pd
 import os
@@ -84,7 +85,8 @@ def upload_file():
             fichier_1=file.filename,
             fichier_2=file2.filename,
             emplacement_source="",
-            emplacement_archive=""
+            emplacement_archive="",
+            user_id=current_user.id if current_user.is_authenticated else None
         )
         db.session.add(projet)
         db.session.commit()

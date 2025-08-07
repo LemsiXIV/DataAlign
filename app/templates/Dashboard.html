@@ -8,25 +8,14 @@
         <!-- Header -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h1 class="text-3xl font-bold text-gray-900 text-center border-b-2 border-blue-500 pb-4">
-                📊 Tableau de Bord - Gestion des Projets
+                📁 Arborescence des Projets
             </h1>
             
-            <!-- Actions rapides -->
-            <div class="mt-4 flex justify-center space-x-4">
-                <a href="{{ url_for('projets.cleanup_logs') }}" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    📋 Historique des Logs
-                </a>
-               
-            </div>
         </div>
 
         <!-- Projects Section -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-4 flex items-center">
-                📁 Arborescence des Projets
-            </h2>
-            
+                      
             <div class="space-y-4">
                 {% if projets_tree %}
                     {% for nom_projet, sous_traitements in projets_tree.items() %}

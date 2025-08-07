@@ -10,11 +10,15 @@ class Projet(db.Model):
     fichier_2 = db.Column(db.String(255))
     emplacement_source = db.Column(db.String(255))
     emplacement_archive = db.Column(db.String(255))
+    
+    # Foreign key to link project to user
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     # Relationships
-    configurations = db.relationship("ConfigurationCleComposee", backref="projet", lazy=True)
-    stats = db.relationship("StatistiqueEcart", backref="projet", lazy=True)
-    fichiers = db.relationship("FichierGenere", backref="projet", lazy=True)
+    user = db.relationship("User", backref="projets", lazy=True)
+    configurations = db.relationship("ConfigurationCleComposee", backref="projet", lazy=True, cascade="all, delete-orphan")
+    stats = db.relationship("StatistiqueEcart", backref="projet", lazy=True, cascade="all, delete-orphan")
+    fichiers = db.relationship("FichierGenere", backref="projet", lazy=True, cascade="all, delete-orphan")
     logs = db.relationship("LogExecution", backref="projet", lazy=True)
 
     def __repr__(self):

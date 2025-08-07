@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file
+from flask_login import login_required, current_user
 from app import db
 from app.models import Projet
 from app.models.statistiques import StatistiqueEcart
 from app.models.fichier_genere import FichierGenere
 from app.models.logs import LogExecution
+from app.models.user import DeletionRequest
 from datetime import datetime
 import os
 import zipfile
@@ -425,7 +427,27 @@ def logs():
         page=page, per_page=per_page, error_out=False
     )
     
-    return render_template('logs.html', logs=logs, log_type=log_type)
+    # Calculate stats for the template
+    total_logs = LogExecution.query.count()
+    success_logs = LogExecution.query.filter_by(statut='success').count()
+    error_logs = LogExecution.query.filter_by(statut='error').count()
+    warning_logs = LogExecution.query.filter_by(statut='warning').count()
+    
+    stats = {
+        'total': total_logs,
+        'success': success_logs,
+        'error': error_logs,
+        'warning': warning_logs
+    }
+    
+    # Create current_filters for template
+    current_filters = {
+        'status': None,
+        'log_type': log_type,
+        'date_range': None
+    }
+    
+    return render_template('all_logs.html', logs=logs, log_type=log_type, stats=stats, current_filters=current_filters)
 
 @projets_bp.route('/logs/cleanup')
 def cleanup_logs():
@@ -504,3 +526,49 @@ def cleanup_logs():
                              'log_type': log_type_filter,
                              'date_range': date_filter
                          })
+
+@projets_bp.route('/request-deletion/<int:projet_id>', methods=['POST'])
+@login_required
+def request_deletion(projet_id):
+    """Allow users to request project deletion (non-admin users)"""
+    projet = Projet.query.get_or_404(projet_id)
+    reason = request.form.get('reason', '')
+    
+    # Check if user is admin (admin can delete directly)
+    if current_user.is_admin():
+        # Admin can delete directly
+        try:
+            db.session.delete(projet)
+            db.session.commit()
+            flash(f'Project "{projet.nom}" has been deleted successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('Error deleting project. Please try again.', 'error')
+    else:
+        # Regular users must request deletion
+        # Check if a deletion request already exists for this project
+        existing_request = DeletionRequest.query.filter_by(
+            projet_id=projet_id, 
+            status='pending'
+        ).first()
+        
+        if existing_request:
+            flash('A deletion request for this project is already pending.', 'info')
+        else:
+            # Create new deletion request
+            deletion_request = DeletionRequest(
+                user_id=current_user.id,
+                projet_id=projet_id,
+                reason=reason,
+                status='pending'
+            )
+            
+            try:
+                db.session.add(deletion_request)
+                db.session.commit()
+                flash('Deletion request submitted successfully. An administrator will review it.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash('Error submitting deletion request. Please try again.', 'error')
+    
+    return redirect(url_for('projets.dashboard'))

@@ -27,7 +27,7 @@
                     <div class="ml-5 w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
-                            <dd class="text-lg font-medium text-gray-900">{{ users|length }}</dd>
+                            <dd class="text-lg font-medium text-gray-900">{{ users.total }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -45,7 +45,7 @@
                     <div class="ml-5 w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Admin Users</dt>
-                            <dd class="text-lg font-medium text-gray-900">{{ users|selectattr('role', 'equalto', 'admin')|list|length }}</dd>
+                            <dd class="text-lg font-medium text-gray-900">{{ users.items|selectattr('role', 'equalto', 'admin')|list|length }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -63,7 +63,7 @@
                     <div class="ml-5 w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Regular Users</dt>
-                            <dd class="text-lg font-medium text-gray-900">{{ users|selectattr('role', 'equalto', 'user')|list|length }}</dd>
+                            <dd class="text-lg font-medium text-gray-900">{{ users.items|selectattr('role', 'equalto', 'user')|list|length }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        {% for user in users %}
+                        {% for user in users.items %}
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
@@ -127,7 +127,7 @@
                                 {% if user.id != current_user.id %}
                                 <div class="flex space-x-2">
                                     <!-- Toggle Role -->
-                                    <form method="POST" action="{{ url_for('admin.toggle_role', user_id=user.id) }}" class="inline">
+                                    <form method="POST" action="{{ url_for('admin.toggle_user_role', user_id=user.id) }}" class="inline">
                                         <button type="submit" 
                                                 class="text-blue-600 hover:text-blue-900"
                                                 onclick="return confirm('Are you sure you want to change this user role?')">
@@ -136,20 +136,11 @@
                                     </form>
                                     
                                     <!-- Toggle Active Status -->
-                                    <form method="POST" action="{{ url_for('admin.toggle_active', user_id=user.id) }}" class="inline">
+                                    <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" class="inline">
                                         <button type="submit" 
                                                 class="{% if user.is_active %}text-orange-600 hover:text-orange-900{% else %}text-green-600 hover:text-green-900{% endif %}"
                                                 onclick="return confirm('Are you sure you want to change this user status?')">
                                             {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
-                                        </button>
-                                    </form>
-                                    
-                                    <!-- Delete User -->
-                                    <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" class="inline">
-                                        <button type="submit" 
-                                                class="text-red-600 hover:text-red-900"
-                                                onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
-                                            Delete
                                         </button>
                                     </form>
                                 </div>

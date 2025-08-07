@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.models.user import User, DeletionRequest
-from app.models import Projet
+from app.models.projet import Projet
 from app import db
 from datetime import datetime
 from functools import wraps
@@ -25,14 +25,23 @@ def dashboard():
     # Get statistics
     total_users = User.query.count()
     total_projects = Projet.query.count()
-    pending_requests = DeletionRequest.query.filter_by(status='pending').count()
+    pending_deletions = DeletionRequest.query.filter_by(status='pending').count()
+    admin_users = User.query.filter_by(role='admin').count()
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+    pending_requests = DeletionRequest.query.filter_by(status='pending').limit(5).all()
+    
+    # Create stats dictionary to match template expectations
+    stats = {
+        'total_users': total_users,
+        'total_projects': total_projects,
+        'pending_deletions': pending_deletions,
+        'admin_users': admin_users
+    }
     
     return render_template('admin/dashboard.html', 
-                         total_users=total_users,
-                         total_projects=total_projects,
-                         pending_requests=pending_requests,
-                         recent_users=recent_users)
+                         stats=stats,
+                         recent_users=recent_users,
+                         pending_requests=pending_requests)
 
 @admin_bp.route('/users')
 @login_required
@@ -82,12 +91,12 @@ def toggle_user_status(user_id):
 @admin_bp.route('/deletion-requests')
 @login_required
 @admin_required
-def deletion_requests():
+def pending_requests():
     page = request.args.get('page', 1, type=int)
     requests = DeletionRequest.query.filter_by(status='pending').paginate(
         page=page, per_page=20, error_out=False
     )
-    return render_template('admin/deletion_requests.html', requests=requests)
+    return render_template('admin/pending_requests.html', requests=requests)
 
 @admin_bp.route('/deletion-requests/<int:request_id>/approve', methods=['POST'])
 @login_required
@@ -108,7 +117,7 @@ def approve_deletion_request(request_id):
     db.session.commit()
     
     flash(f'Project "{projet.nom}" has been deleted.', 'success')
-    return redirect(url_for('admin.deletion_requests'))
+    return redirect(url_for('admin.pending_requests'))
 
 @admin_bp.route('/deletion-requests/<int:request_id>/reject', methods=['POST'])
 @login_required
@@ -125,7 +134,7 @@ def reject_deletion_request(request_id):
     db.session.commit()
     
     flash('Deletion request has been rejected.', 'info')
-    return redirect(url_for('admin.deletion_requests'))
+    return redirect(url_for('admin.pending_requests'))
 
 @admin_bp.route('/projects')
 @login_required

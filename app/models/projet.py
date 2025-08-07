@@ -15,7 +15,8 @@ class Projet(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
     # Relationships
-    user = db.relationship("User", backref="projets", lazy=True)
+    # Using back_populates to avoid conflicts with User.projets
+    owner = db.relationship("User", back_populates='projets', lazy=True)
     configurations = db.relationship("ConfigurationCleComposee", backref="projet", lazy=True, cascade="all, delete-orphan")
     stats = db.relationship("StatistiqueEcart", backref="projet", lazy=True, cascade="all, delete-orphan")
     fichiers = db.relationship("FichierGenere", backref="projet", lazy=True, cascade="all, delete-orphan")

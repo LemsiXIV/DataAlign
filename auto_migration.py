@@ -20,11 +20,15 @@ def init_auto_migration(app):
         def log_migration_action(statut, message, details=None):
             """Enregistre une action de migration dans les logs"""
             try:
+                # Combine message and details into a single message field
+                full_message = f"Migration automatique: {message}"
+                if details:
+                    full_message += f" | Details: {details}"
+                    
                 log_entry = LogExecution(
                     projet_id=None,  # Migration automatique, pas liée à un projet spécifique
                     statut=statut,
-                    message=f"Migration automatique: {message}",
-                    details=details
+                    message=full_message
                 )
                 db.session.add(log_entry)
                 db.session.commit()

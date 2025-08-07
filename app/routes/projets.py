@@ -527,6 +527,57 @@ def cleanup_logs():
                              'date_range': date_filter
                          })
 
+@projets_bp.route('/request-treatment-deletion/<int:fichier_genere_id>', methods=['POST'])
+@login_required
+def request_treatment_deletion(fichier_genere_id):
+    """Allow users to request treatment deletion from FichierGenere table"""
+    fichier_genere = FichierGenere.query.get_or_404(fichier_genere_id)
+    reason = request.form.get('reason', '')
+    
+    # Get the parent project for naming
+    projet = Projet.query.get(fichier_genere.projet_id)
+    treatment_name = fichier_genere.nom_traitement_projet or f"Treatment {fichier_genere.id}"
+    
+    # Check if user is admin (admin can delete directly)
+    if current_user.is_admin():
+        # Admin can delete directly
+        try:
+            db.session.delete(fichier_genere)
+            db.session.commit()
+            flash(f'Treatment "{treatment_name}" has been deleted successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('Error deleting treatment. Please try again.', 'error')
+    else:
+        # Regular users must request deletion
+        # Check if a deletion request already exists for this treatment
+        existing_request = DeletionRequest.query.filter_by(
+            fichier_genere_id=fichier_genere_id, 
+            status='pending'
+        ).first()
+        
+        if existing_request:
+            flash('A deletion request for this treatment is already pending.', 'info')
+        else:
+            # Create new deletion request
+            deletion_request = DeletionRequest(
+                user_id=current_user.id,
+                fichier_genere_id=fichier_genere_id,
+                projet_id=fichier_genere.projet_id,  # Keep project reference for context
+                reason=reason,
+                status='pending'
+            )
+            
+            try:
+                db.session.add(deletion_request)
+                db.session.commit()
+                flash('Treatment deletion request submitted successfully. An administrator will review it.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash('Error submitting deletion request. Please try again.', 'error')
+    
+    return redirect(url_for('projets.dashboard'))
+
 @projets_bp.route('/request-deletion/<int:projet_id>', methods=['POST'])
 @login_required
 def request_deletion(projet_id):
@@ -536,14 +587,19 @@ def request_deletion(projet_id):
     
     # Check if user is admin (admin can delete directly)
     if current_user.is_admin():
-        # Admin can delete directly
+        # Admin can delete directly - preserve logs like in admin route
         try:
+            # Update project logs to set projet_id to NULL (preserve logs)
+            for log in projet.logs:
+                log.projet_id = None
+            
+            # Delete the project (cascade will handle related records except logs)
             db.session.delete(projet)
             db.session.commit()
-            flash(f'Project "{projet.nom}" has been deleted successfully.', 'success')
+            flash(f'Treatment "{projet.nom_projet}" has been deleted successfully.', 'success')
         except Exception as e:
             db.session.rollback()
-            flash('Error deleting project. Please try again.', 'error')
+            flash('Error deleting treatment. Please try again.', 'error')
     else:
         # Regular users must request deletion
         # Check if a deletion request already exists for this project

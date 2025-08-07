@@ -4,7 +4,7 @@ Script pour exécuter manuellement les migrations automatiques
 """
 
 from app import create_app
-from auto_migration import run_migration_check
+from auto_migration import init_auto_migration
 
 def main():
     """Exécuter les migrations manuellement"""
@@ -12,13 +12,15 @@ def main():
     
     app = create_app()
     
-    with app.app_context():
-        try:
-            run_migration_check()
-            print("✅ Migrations terminées avec succès")
-        except Exception as e:
-            print(f"❌ Erreur lors des migrations: {e}")
-            return 1
+    # Temporairement activer AUTO_MIGRATION pour cette exécution
+    app.config['AUTO_MIGRATION'] = True
+    
+    try:
+        init_auto_migration(app)
+        print("✅ Migrations terminées avec succès")
+    except Exception as e:
+        print(f"❌ Erreur lors des migrations: {e}")
+        return 1
     
     return 0
 

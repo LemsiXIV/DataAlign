@@ -17,9 +17,8 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
-    # Note: Relationships will be established after fixing database schema
-    # projets = db.relationship('Projet', backref='owner', lazy=True, cascade='all, delete-orphan')
-    # deletion_requests = db.relationship('DeletionRequest', foreign_keys='DeletionRequest.user_id', backref='requester', lazy=True)
+    # Relationships
+    projets = db.relationship('Projet', back_populates='owner', lazy=True)
     
     def set_password(self, password):
         """Hash and set password"""
@@ -51,7 +50,8 @@ class DeletionRequest(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'), nullable=False)
+    projet_id = db.Column(db.Integer, db.ForeignKey('projets.id'), nullable=True)  # Keep for backward compatibility
+    fichier_genere_id = db.Column(db.Integer, db.ForeignKey('fichiers_generes.id'), nullable=True)  # New field for treatments
     reason = db.Column(db.Text)
     status = db.Column(db.String(20), default='pending')  # 'pending', 'approved', 'rejected'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -59,9 +59,11 @@ class DeletionRequest(db.Model):
     reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     admin_comments = db.Column(db.Text)
     
-    # Relationships - temporarily disabled to fix schema issues
-    # Note: Will be re-enabled after proper foreign key setup
-    # reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref='reviewed_requests')
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='deletion_requests')
+    projet = db.relationship('Projet', foreign_keys=[projet_id], backref='deletion_requests')
+    fichier_genere = db.relationship('FichierGenere', foreign_keys=[fichier_genere_id], backref='deletion_requests')
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by], backref='reviewed_requests')
     
     def __repr__(self):
         return f'<DeletionRequest {self.id} - Project {self.projet_id}>'

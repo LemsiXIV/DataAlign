@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.models.user import User, DeletionRequest
 from app.models.projet import Projet
+from app.models.fichier_genere import FichierGenere
 from app.models.logs import LogExecution
 from app import db
 from datetime import datetime
@@ -44,7 +45,11 @@ def dashboard():
     pending_deletions = DeletionRequest.query.filter_by(status='pending').count()
     admin_users = User.query.filter_by(role='admin').count()
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
-    pending_requests = DeletionRequest.query.filter_by(status='pending').limit(5).all()
+    # Use joins to eagerly load related objects for pending requests
+    pending_requests = DeletionRequest.query.join(User, DeletionRequest.user_id == User.id)\
+                                           .join(Projet, DeletionRequest.projet_id == Projet.id)\
+                                           .filter(DeletionRequest.status == 'pending')\
+                                           .limit(5).all()
     
     # Create stats dictionary to match template expectations
     stats = {
@@ -129,10 +134,10 @@ def toggle_user_status(user_id):
 @admin_required
 def pending_requests():
     page = request.args.get('page', 1, type=int)
-    requests = DeletionRequest.query.filter_by(status='pending').paginate(
-        page=page, per_page=20, error_out=False
-    )
-    return render_template('admin/pending_requests.html', requests=requests)
+    # Get all pending deletion requests (both project and treatment)
+    deletion_requests = DeletionRequest.query.filter(DeletionRequest.status == 'pending')\
+                                           .paginate(page=page, per_page=20, error_out=False)
+    return render_template('admin/pending_requests.html', pending_requests=deletion_requests.items)
 
 @admin_bp.route('/deletion-requests/<int:request_id>/approve', methods=['POST'])
 @login_required
@@ -140,37 +145,67 @@ def pending_requests():
 def approve_deletion_request(request_id):
     deletion_request = DeletionRequest.query.get_or_404(request_id)
     
-    # Store project info for logging before deletion
-    projet = deletion_request.projet
-    project_name = projet.nom_projet
-    project_id = projet.id
-    request_user = deletion_request.user.username
-    
-    try:
-        # Update request status first
-        deletion_request.status = 'approved'
-        deletion_request.reviewed_at = datetime.utcnow()
-        deletion_request.reviewed_by = current_user.id
-        deletion_request.admin_comments = request.form.get('admin_comments', '')
+    if deletion_request.fichier_genere_id:
+        # Treatment deletion request
+        fichier_genere = deletion_request.fichier_genere
+        treatment_name = fichier_genere.nom_traitement_projet or f"Treatment {fichier_genere.id}"
+        request_user = deletion_request.user.username
         
-        # Update project logs to set projet_id to NULL (preserve logs)
-        for log in projet.logs:
-            log.projet_id = None
+        try:
+            # Update request status first
+            deletion_request.status = 'approved'
+            deletion_request.reviewed_at = datetime.utcnow()
+            deletion_request.reviewed_by = current_user.id
+            deletion_request.admin_comments = request.form.get('admin_comments', '')
+            deletion_request.fichier_genere_id = None  # Set to NULL before deleting
+            
+            # Delete the treatment
+            db.session.delete(fichier_genere)
+            db.session.commit()
+            
+            # Log the action
+            log_admin_action(
+                action="Treatment Deletion Approved",
+                details=f"Approved deletion request for treatment '{treatment_name}' requested by user '{request_user}'"
+            )
+            
+            flash(f'Treatment "{treatment_name}" has been deleted.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error deleting treatment: {str(e)}', 'error')
+    else:
+        # Legacy project deletion request (keep existing logic)
+        projet = deletion_request.projet
+        project_name = projet.nom_projet
+        project_id = projet.id
+        request_user = deletion_request.user.username
         
-        # Delete the project (cascade will handle related records except logs)
-        db.session.delete(projet)
-        db.session.commit()
-        
-        # Log the action (this will be a system log since the project is gone)
-        log_admin_action(
-            action="Project Deletion Approved",
-            details=f"Approved deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'"
-        )
-        
-        flash(f'Project "{project_name}" has been deleted.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting project: {str(e)}', 'error')
+        try:
+            # Update request status first and set projet_id to NULL to avoid constraint violation
+            deletion_request.status = 'approved'
+            deletion_request.reviewed_at = datetime.utcnow()
+            deletion_request.reviewed_by = current_user.id
+            deletion_request.admin_comments = request.form.get('admin_comments', '')
+            deletion_request.projet_id = None  # Set to NULL before deleting project
+            
+            # Update project logs to set projet_id to NULL (preserve logs)
+            for log in projet.logs:
+                log.projet_id = None
+            
+            # Delete the project (cascade will handle related records except logs)
+            db.session.delete(projet)
+            db.session.commit()
+            
+            # Log the action (this will be a system log since the project is gone)
+            log_admin_action(
+                action="Project Deletion Approved",
+                details=f"Approved deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'"
+            )
+            
+            flash(f'Project "{project_name}" has been deleted.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error deleting project: {str(e)}', 'error')
     
     return redirect(url_for('admin.pending_requests'))
 
@@ -180,10 +215,19 @@ def approve_deletion_request(request_id):
 def reject_deletion_request(request_id):
     deletion_request = DeletionRequest.query.get_or_404(request_id)
     
-    # Store info for logging
-    project_name = deletion_request.projet.nom_projet
-    project_id = deletion_request.projet.id
-    request_user = deletion_request.user.username
+    if deletion_request.fichier_genere_id:
+        # Treatment deletion request
+        treatment_name = deletion_request.fichier_genere.nom_traitement_projet or f"Treatment {deletion_request.fichier_genere.id}"
+        request_user = deletion_request.user.username
+        log_message = f"Rejected deletion request for treatment '{treatment_name}' requested by user '{request_user}'"
+        flash_message = 'Treatment deletion request has been rejected.'
+    else:
+        # Legacy project deletion request
+        project_name = deletion_request.projet.nom_projet if deletion_request.projet else 'Unknown'
+        project_id = deletion_request.projet.id if deletion_request.projet else 'Unknown'
+        request_user = deletion_request.user.username
+        log_message = f"Rejected deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'"
+        flash_message = 'Project deletion request has been rejected.'
     
     # Update request status
     deletion_request.status = 'rejected'
@@ -195,12 +239,12 @@ def reject_deletion_request(request_id):
     
     # Log the action
     log_admin_action(
-        action="Project Deletion Rejected",
-        details=f"Rejected deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'",
-        project_id=project_id
+        action="Deletion Request Rejected",
+        details=log_message,
+        project_id=deletion_request.projet_id
     )
     
-    flash('Deletion request has been rejected.', 'info')
+    flash(flash_message, 'info')
     return redirect(url_for('admin.pending_requests'))
 
 @admin_bp.route('/projects')
@@ -219,7 +263,7 @@ def projects():
 def delete_project(project_id):
     projet = Projet.query.get_or_404(project_id)
     projet_name = projet.nom_projet
-    project_owner = projet.user.username if projet.user else 'Unknown'
+    project_owner = projet.owner.username if projet.owner else 'Unknown'
     
     # Store info for logging before deletion
     log_project_id = projet.id
@@ -235,11 +279,11 @@ def delete_project(project_id):
         
         # Log the action (this will be a system log since the project is gone)
         log_admin_action(
-            action="Direct Project Deletion",
-            details=f"Directly deleted project '{projet_name}' (ID: {log_project_id}) owned by user '{project_owner}'"
+            action="Direct Treatment Deletion",
+            details=f"Directly deleted treatment '{projet_name}' (ID: {log_project_id}) owned by user '{project_owner}'"
         )
         
-        flash(f'Project "{projet_name}" has been deleted.', 'success')
+        flash(f'Treatment "{projet_name}" has been deleted.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting project: {str(e)}', 'error')

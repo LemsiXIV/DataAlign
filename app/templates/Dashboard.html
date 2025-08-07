@@ -94,8 +94,11 @@
                                     <!-- Delete/Request Deletion Button -->
                                     {% if current_user.is_authenticated %}
                                     <button class="delete-project-btn flex-1 bg-red-500 text-white px-3 py-2 rounded-md text-xs hover:bg-red-600 transition-colors"
+                                            data-treatment-id="{{ traitement.id }}"
                                             data-project-id="{{ traitement.projet_id }}"
                                             data-project-name="{{ traitement.nom_projet }}"
+                                            data-project-date="{{ traitement.formatted_date }}"
+                                            data-is-fichier-genere="{{ 'true' if not (traitement.id|string).startswith('default_') else 'false' }}"
                                             data-is-admin="{{ current_user.is_admin() }}">
                                         🗑️ {% if current_user.is_admin() %}Supprimer{% else %}Demander{% endif %}
                                     </button>
@@ -446,7 +449,7 @@
         }
         
         // Delete modal functions
-        function showDeleteModal(projectId, projectName, isAdmin) {
+        function showDeleteModal(treatmentId, projectId, projectName, projectDate, isFichierGenere, isAdmin) {
             const modal = document.getElementById('deleteModal');
             const form = document.getElementById('deleteForm');
             const reasonField = document.getElementById('reasonField');
@@ -455,22 +458,27 @@
             const modalMessage = document.getElementById('deleteModalMessage');
             const modalDescription = document.getElementById('deleteModalDescription');
             
-            // Set form action
-            form.action = `/request-deletion/${projectId}`;
+            // Set form action based on whether it's a FichierGenere or default treatment
+            if (isFichierGenere === 'true') {
+                form.action = `/request-treatment-deletion/${treatmentId}`;
+            } else {
+                // For default treatments, we still need to handle them differently
+                form.action = `/request-deletion/${projectId}`;
+            }
             
             if (isAdmin === 'True' || isAdmin === true) {
                 // Admin can delete directly
-                modalTitle.textContent = 'Confirmer la suppression';
-                modalMessage.textContent = `Êtes-vous sûr de vouloir supprimer le projet "${projectName}" ?`;
-                modalDescription.textContent = 'Cette action supprimera définitivement le projet et ne peut pas être annulée.';
-                confirmBtn.textContent = 'Supprimer définitivement';
+                modalTitle.textContent = 'Confirmer la suppression du traitement';
+                modalMessage.textContent = `Êtes-vous sûr de vouloir supprimer le traitement "${projectName}" du ${projectDate} ?`;
+                modalDescription.textContent = 'Cette action supprimera définitivement ce traitement spécifique et ne peut pas être annulée.';
+                confirmBtn.textContent = 'Supprimer le traitement';
                 confirmBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors';
                 reasonField.classList.add('hidden');
             } else {
                 // Regular user requests deletion
-                modalTitle.textContent = 'Demander la suppression';
-                modalMessage.textContent = `Demander la suppression du projet "${projectName}"`;
-                modalDescription.textContent = 'Votre demande sera examinée par un administrateur.';
+                modalTitle.textContent = 'Demander la suppression du traitement';
+                modalMessage.textContent = `Demander la suppression du traitement "${projectName}" du ${projectDate}`;
+                modalDescription.textContent = 'Votre demande de suppression de ce traitement spécifique sera examinée par un administrateur.';
                 confirmBtn.textContent = 'Envoyer la demande';
                 confirmBtn.className = 'px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors';
                 reasonField.classList.remove('hidden');
@@ -489,10 +497,13 @@
             const deleteButtons = document.querySelectorAll('.delete-project-btn');
             deleteButtons.forEach(button => {
                 button.addEventListener('click', function() {
+                    const treatmentId = this.getAttribute('data-treatment-id');
                     const projectId = this.getAttribute('data-project-id');
                     const projectName = this.getAttribute('data-project-name');
+                    const projectDate = this.getAttribute('data-project-date');
+                    const isFichierGenere = this.getAttribute('data-is-fichier-genere');
                     const isAdmin = this.getAttribute('data-is-admin');
-                    showDeleteModal(projectId, projectName, isAdmin);
+                    showDeleteModal(treatmentId, projectId, projectName, projectDate, isFichierGenere, isAdmin);
                 });
             });
             

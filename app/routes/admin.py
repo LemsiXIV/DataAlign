@@ -4,6 +4,7 @@ from app.models.user import User, DeletionRequest
 from app.models.projet import Projet
 from app.models.fichier_genere import FichierGenere
 from app.models.logs import LogExecution
+from app.routes.notifications import create_notification
 from app import db
 from datetime import datetime
 from functools import wraps
@@ -169,6 +170,15 @@ def approve_deletion_request(request_id):
                 details=f"Approved deletion request for treatment '{treatment_name}' requested by user '{request_user}'"
             )
             
+            # Create notification for the user
+            create_notification(
+                user_id=deletion_request.user_id,
+                title="Treatment Deletion Approved",
+                message=f"Your request to delete treatment '{treatment_name}' has been approved and the treatment has been deleted.",
+                notification_type='success',
+                related_request_id=deletion_request.id
+            )
+            
             flash(f'Treatment "{treatment_name}" has been deleted.', 'success')
         except Exception as e:
             db.session.rollback()
@@ -200,6 +210,15 @@ def approve_deletion_request(request_id):
             log_admin_action(
                 action="Project Deletion Approved",
                 details=f"Approved deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'"
+            )
+            
+            # Create notification for the user
+            create_notification(
+                user_id=deletion_request.user_id,
+                title="Project Deletion Approved",
+                message=f"Your request to delete project '{project_name}' has been approved and the project has been deleted.",
+                notification_type='success',
+                related_request_id=deletion_request.id
             )
             
             flash(f'Project "{project_name}" has been deleted.', 'success')
@@ -242,6 +261,15 @@ def reject_deletion_request(request_id):
         action="Deletion Request Rejected",
         details=log_message,
         project_id=deletion_request.projet_id
+    )
+    
+    # Create notification for the user
+    create_notification(
+        user_id=deletion_request.user_id,
+        title="Deletion Request Rejected",
+        message=f"Your deletion request has been rejected. {deletion_request.admin_comments or 'No additional comments provided.'}",
+        notification_type='warning',
+        related_request_id=deletion_request.id
     )
     
     flash(flash_message, 'info')

@@ -5,7 +5,8 @@ from app.models import Projet
 from app.models.statistiques import StatistiqueEcart
 from app.models.fichier_genere import FichierGenere
 from app.models.logs import LogExecution
-from app.models.user import DeletionRequest
+from app.models.user import DeletionRequest, User
+from app.routes.notifications import create_notification
 from datetime import datetime
 import os
 import zipfile
@@ -13,6 +14,29 @@ import tempfile
 from collections import defaultdict
 
 projets_bp = Blueprint('projets', __name__)
+
+def notify_all_admins(title, message, notification_type='info', related_request_id=None):
+    """Helper function to notify all admin users"""
+    try:
+        admin_users = User.query.filter_by(role='admin').all()
+        print(f"DEBUG: Found {len(admin_users)} admin users")
+        
+        for admin in admin_users:
+            print(f"DEBUG: Notifying admin {admin.username} (ID: {admin.id})")
+            result = create_notification(
+                user_id=admin.id,
+                title=title,
+                message=message,
+                notification_type=notification_type,
+                related_request_id=related_request_id
+            )
+            print(f"DEBUG: Notification created for admin {admin.username}: {result is not None}")
+            
+        print(f"DEBUG: Finished notifying {len(admin_users)} admins")
+    except Exception as e:
+        print(f"ERROR in notify_all_admins: {e}")
+        import traceback
+        traceback.print_exc()
 
 @projets_bp.route("/")
 @projets_bp.route("/app/templates/index")
@@ -571,6 +595,24 @@ def request_treatment_deletion(fichier_genere_id):
             try:
                 db.session.add(deletion_request)
                 db.session.commit()
+                
+                # Create notification for user
+                create_notification(
+                    user_id=current_user.id,
+                    title="Treatment Deletion Request Submitted",
+                    message=f"Your request to delete treatment '{treatment_name}' from project '{projet.nom_projet if projet else 'Unknown'}' has been submitted and is awaiting admin approval.",
+                    notification_type='info',
+                    related_request_id=deletion_request.id
+                )
+                
+                # Notify all admins about the new deletion request
+                notify_all_admins(
+                    title="New Treatment Deletion Request",
+                    message=f"User {current_user.username} has requested deletion of treatment '{treatment_name}' from project '{projet.nom_projet if projet else 'Unknown'}'. Please review the request.",
+                    notification_type='warning',
+                    related_request_id=deletion_request.id
+                )
+                
                 flash('Treatment deletion request submitted successfully. An administrator will review it.', 'success')
             except Exception as e:
                 db.session.rollback()
@@ -622,6 +664,24 @@ def request_deletion(projet_id):
             try:
                 db.session.add(deletion_request)
                 db.session.commit()
+                
+                # Create notification for user
+                create_notification(
+                    user_id=current_user.id,
+                    title="Deletion Request Submitted",
+                    message=f"Your request to delete project '{projet.nom_projet}' has been submitted and is awaiting admin approval.",
+                    notification_type='info',
+                    related_request_id=deletion_request.id
+                )
+                
+                # Notify all admins about the new deletion request
+                notify_all_admins(
+                    title="New Project Deletion Request",
+                    message=f"User {current_user.username} has requested deletion of project '{projet.nom_projet}'. Please review the request.",
+                    notification_type='warning',
+                    related_request_id=deletion_request.id
+                )
+                
                 flash('Deletion request submitted successfully. An administrator will review it.', 'success')
             except Exception as e:
                 db.session.rollback()

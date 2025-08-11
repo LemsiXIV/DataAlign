@@ -45,6 +45,34 @@
             </a>
             <div class="flex md:order-2 space-x-3">
                 {% if current_user.is_authenticated %}
+                    <!-- Notification Dropdown -->
+                    <div class="relative inline-block text-left">
+                        <button type="button" class="relative flex items-center text-sm bg-gray-100 rounded-full p-2 hover:bg-gray-200 focus:ring-4 focus:ring-gray-300" id="notification-menu-button" data-dropdown-toggle="notification-dropdown">
+                            <span class="sr-only">View notifications</span>
+                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+                            </svg>
+                            <!-- Notification count badge -->
+                            <span id="notification-count" class="hidden absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform bg-red-600 rounded-full">0</span>
+                        </button>
+                        
+                        <!-- Notification Dropdown menu -->
+                        <div class="z-50 hidden my-4 text-base list-none bg-white divide-y divide-gray-100 rounded-lg shadow-lg w-80 max-h-96 overflow-y-auto" id="notification-dropdown">
+                            <div class="px-4 py-3 bg-gray-50">
+                                <div class="flex items-center justify-between">
+                                    <span class="block text-sm font-medium text-gray-900">Notifications</span>
+                                    <a href="{{ url_for('notifications.notifications_page') }}" class="text-xs text-blue-600 hover:text-blue-800">View all</a>
+                                </div>
+                            </div>
+                            <div id="notification-list" class="py-2">
+                                <!-- Notifications will be loaded here via JavaScript -->
+                                <div class="px-4 py-3 text-center text-sm text-gray-500">
+                                    Loading notifications...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
                     <!-- User Menu Dropdown -->
                     <div class="relative inline-block text-left">
                         <button type="button" class="flex items-center text-sm bg-gray-800 rounded-full md:mr-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600" id="user-menu-button" aria-expanded="false" data-dropdown-toggle="user-dropdown" data-dropdown-placement="bottom">
@@ -109,6 +137,12 @@
                             class="block py-2 pl-3 pr-4 text-gray-700 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-white dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700
                             {% if request.endpoint == 'projets.dashboard' %}text-white bg-blue-700 md:bg-transparent md:text-blue-700{% endif %}"
                             {% if request.endpoint == 'projets.dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('notifications.notifications_page') }}"
+                            class="block py-2 pl-3 pr-4 text-gray-700 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-white dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700
+                            {% if request.endpoint == 'notifications.notifications_page' %}text-white bg-blue-700 md:bg-transparent md:text-blue-700{% endif %}"
+                            {% if request.endpoint == 'notifications.notifications_page' %}aria-current="page"{% endif %}>🔔 Notifications</a>
                     </li>
                     {% if current_user.role == 'admin' %}
                     <li class="relative group">
@@ -217,6 +251,141 @@
     <script src="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.2.1/flowbite.min.js"></script>
     {% endblock %}
+
+    <!-- Notification System Script -->
+    {% if current_user.is_authenticated %}
+    <script>
+        // Notification system
+        function loadNotifications() {
+            fetch('/api/notifications?per_page=5&unread_only=false')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    const notificationCount = document.getElementById('notification-count');
+                    
+                    if (data.notifications.length === 0) {
+                        notificationList.innerHTML = '<div class="px-4 py-3 text-center text-sm text-gray-500">No notifications</div>';
+                    } else {
+                        notificationList.innerHTML = data.notifications.map(notification => `
+                            <div class="px-4 py-3 hover:bg-gray-50 cursor-pointer ${!notification.is_read ? 'bg-blue-50' : ''}"
+                                 onclick="markNotificationRead(${notification.id})">
+                                <div class="flex items-start">
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2">
+                                            <p class="text-sm font-medium text-gray-900">${notification.title}</p>
+                                            ${!notification.is_read ? '<span class="w-2 h-2 bg-blue-600 rounded-full"></span>' : ''}
+                                        </div>
+                                        <p class="text-xs text-gray-600 mt-1">${notification.message}</p>
+                                        <p class="text-xs text-gray-400 mt-1">${formatNotificationDate(notification.created_at)}</p>
+                                    </div>
+                                    <div class="ml-2">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                            ${notification.type === 'success' ? 'bg-green-100 text-green-800' :
+                                              notification.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                                              notification.type === 'error' ? 'bg-red-100 text-red-800' :
+                                              'bg-gray-100 text-gray-800'}">
+                                            ${notification.type === 'success' ? '✓' :
+                                              notification.type === 'warning' ? '⚠' :
+                                              notification.type === 'error' ? '✗' : 'ℹ'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                    document.getElementById('notification-list').innerHTML = '<div class="px-4 py-3 text-center text-sm text-red-500">Error loading notifications</div>';
+                });
+        }
+
+        function loadNotificationCount() {
+            fetch('/api/notifications/count')
+                .then(response => response.json())
+                .then(data => {
+                    const countEl = document.getElementById('notification-count');
+                    if (data.unread_count > 0) {
+                        countEl.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                        countEl.classList.remove('hidden');
+                    } else {
+                        countEl.classList.add('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notification count:', error);
+                });
+        }
+
+        function markNotificationRead(notificationId) {
+            fetch(`/api/notifications/${notificationId}/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadNotifications();
+                    loadNotificationCount();
+                }
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+            });
+        }
+
+        function formatNotificationDate(dateString) {
+            // Parse the date string as UTC
+            const date = new Date(dateString);
+            const now = new Date();
+            
+            // Calculate difference in milliseconds, then convert to seconds
+            const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+            
+            if (diffInSeconds < 0) {
+                return 'Just now'; // Handle future dates as "just now"
+            } else if (diffInSeconds < 60) {
+                return 'Just now';
+            } else if (diffInSeconds < 3600) {
+                const minutes = Math.floor(diffInSeconds / 60);
+                return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+            } else if (diffInSeconds < 86400) {
+                const hours = Math.floor(diffInSeconds / 3600);
+                return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            } else {
+                const days = Math.floor(diffInSeconds / 86400);
+                if (days === 1) {
+                    return 'Yesterday';
+                } else if (days < 7) {
+                    return `${days} days ago`;
+                } else {
+                    // For older dates, show the actual date
+                    return date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined 
+                    });
+                }
+            }
+        }
+
+        // Load notifications when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotificationCount();
+            
+            // Load notifications when dropdown is opened
+            const notificationButton = document.getElementById('notification-menu-button');
+            notificationButton.addEventListener('click', function() {
+                loadNotifications();
+            });
+            
+            // Refresh notification count every 30 seconds
+            setInterval(loadNotificationCount, 30000);
+        });
+    </script>
+    {% endif %}
 
     {% block extra_scripts %}{% endblock %}
 </body>

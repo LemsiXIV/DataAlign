@@ -44,6 +44,7 @@ def create_app(config_name=None):
     from app.models.fichier_genere import FichierGenere
     from app.models.logs import LogExecution
     from app.models.user import User, DeletionRequest
+    from app.models.notification import Notification
 
     # User loader for Flask-Login
     @login_manager.user_loader
@@ -57,6 +58,7 @@ def create_app(config_name=None):
     from app.routes.api import api_bp
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
+    from app.routes.notifications import notifications_bp
 
     app.register_blueprint(projets_bp)
     app.register_blueprint(comparaison_bp)
@@ -64,5 +66,6 @@ def create_app(config_name=None):
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(notifications_bp)
 
     return app

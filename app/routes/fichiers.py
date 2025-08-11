@@ -32,6 +32,12 @@ def render_index_with_errors(file1_error=None, file2_error=None, project_error=N
 @fichiers_bp.route('/upload', methods=['POST'])
 def upload_file():
     session.clear() # Clear session to avoid conflicts with previous uploads
+    
+    # Ensure user is logged in for project creation
+    if not current_user.is_authenticated:
+        flash('Vous devez être connecté pour créer ou modifier un projet.', 'error')
+        return redirect(url_for('auth.login'))
+    
     if 'file' not in request.files or 'file2' not in request.files:
         return render_index_with_errors(project_error="Veuillez sélectionner les deux fichiers", show_main_modal=True)
 
@@ -82,8 +88,8 @@ def upload_file():
         projet = Projet(
             nom_projet=nom_projet,
             date_creation=date_execution,
-            fichier_1=file.filename,
-            fichier_2=file2.filename,
+            fichier_1="",  # Will be updated after file processing
+            fichier_2="",  # Will be updated after file processing
             emplacement_source="",
             emplacement_archive="",
             user_id=current_user.id if current_user.is_authenticated else None
@@ -95,7 +101,7 @@ def upload_file():
         log = LogExecution(
             projet_id=projet.id,
             statut='succès',
-            message=f"Nouveau projet créé: {nom_projet} avec fichiers {file.filename} et {file2.filename}"
+            message=f"Nouveau projet créé: {nom_projet} par utilisateur {current_user.username if current_user.is_authenticated else 'Anonyme'}"
         )
         db.session.add(log)
         db.session.commit()
@@ -117,12 +123,22 @@ def upload_file():
     file.save(filepath)
     file2.save(filepath2)
 
-    # Update project with file and folder information if it's a new project
+    # Update project with file and folder information
     if not projet_existant_id:
+        # For new projects, update with the renamed filenames and folder paths
         projet.fichier_1 = new_file1_name
         projet.fichier_2 = new_file2_name
         projet.emplacement_source = project_folder
         projet.emplacement_archive = project_folder
+        db.session.commit()
+        
+        # Update log with file information
+        log = LogExecution(
+            projet_id=projet.id,
+            statut='succès',
+            message=f"Fichiers sauvegardés pour le projet {actual_project_name}: {new_file1_name} et {new_file2_name} dans {project_folder}"
+        )
+        db.session.add(log)
         db.session.commit()
     else:
         # For existing projects, update the folder paths if they're empty
@@ -130,6 +146,15 @@ def upload_file():
             projet.emplacement_source = project_folder
             projet.emplacement_archive = project_folder
             db.session.commit()
+        
+        # Log for existing project file addition
+        log = LogExecution(
+            projet_id=projet.id,
+            statut='succès',
+            message=f"Nouveaux fichiers ajoutés au projet {actual_project_name}: {new_file1_name} et {new_file2_name} dans {project_folder}"
+        )
+        db.session.add(log)
+        db.session.commit()
 
     # Read files using optimized approach
     try:

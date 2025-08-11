@@ -1,10 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
+from sqlalchemy.orm import joinedload
 from app.models.user import User, DeletionRequest
 from app.models.projet import Projet
 from app.models.fichier_genere import FichierGenere
 from app.models.logs import LogExecution
 from app.routes.notifications import create_notification
+from app.utils.file_manager import delete_project_files, get_file_cleanup_summary
 from app import db
 from datetime import datetime
 from functools import wraps
@@ -153,6 +155,10 @@ def approve_deletion_request(request_id):
         request_user = deletion_request.user.username
         
         try:
+            # Delete associated files first
+            file_deletion_result = delete_project_files(fichier_genere.projet, fichier_genere)
+            file_cleanup_summary = get_file_cleanup_summary(file_deletion_result)
+            
             # Update request status first
             deletion_request.status = 'approved'
             deletion_request.reviewed_at = datetime.utcnow()
@@ -160,26 +166,26 @@ def approve_deletion_request(request_id):
             deletion_request.admin_comments = request.form.get('admin_comments', '')
             deletion_request.fichier_genere_id = None  # Set to NULL before deleting
             
-            # Delete the treatment
+            # Delete the treatment from database
             db.session.delete(fichier_genere)
             db.session.commit()
             
-            # Log the action
+            # Log the action with file cleanup info
             log_admin_action(
                 action="Treatment Deletion Approved",
-                details=f"Approved deletion request for treatment '{treatment_name}' requested by user '{request_user}'"
+                details=f"Approved deletion request for treatment '{treatment_name}' requested by user '{request_user}'. {file_cleanup_summary}"
             )
             
             # Create notification for the user
             create_notification(
                 user_id=deletion_request.user_id,
                 title="Treatment Deletion Approved",
-                message=f"Your request to delete treatment '{treatment_name}' has been approved and the treatment has been deleted.",
+                message=f"Your request to delete treatment '{treatment_name}' has been approved and the treatment has been deleted. {file_cleanup_summary}",
                 notification_type='success',
                 related_request_id=deletion_request.id
             )
             
-            flash(f'Treatment "{treatment_name}" has been deleted.', 'success')
+            flash(f'Treatment "{treatment_name}" has been deleted. {file_cleanup_summary}', 'success')
         except Exception as e:
             db.session.rollback()
             flash(f'Error deleting treatment: {str(e)}', 'error')
@@ -191,6 +197,10 @@ def approve_deletion_request(request_id):
         request_user = deletion_request.user.username
         
         try:
+            # Delete associated files first
+            file_deletion_result = delete_project_files(projet)
+            file_cleanup_summary = get_file_cleanup_summary(file_deletion_result)
+            
             # Update request status first and set projet_id to NULL to avoid constraint violation
             deletion_request.status = 'approved'
             deletion_request.reviewed_at = datetime.utcnow()
@@ -209,19 +219,19 @@ def approve_deletion_request(request_id):
             # Log the action (this will be a system log since the project is gone)
             log_admin_action(
                 action="Project Deletion Approved",
-                details=f"Approved deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'"
+                details=f"Approved deletion request for project '{project_name}' (ID: {project_id}) requested by user '{request_user}'. {file_cleanup_summary}"
             )
             
             # Create notification for the user
             create_notification(
                 user_id=deletion_request.user_id,
                 title="Project Deletion Approved",
-                message=f"Your request to delete project '{project_name}' has been approved and the project has been deleted.",
+                message=f"Your request to delete project '{project_name}' has been approved and the project has been deleted. {file_cleanup_summary}",
                 notification_type='success',
                 related_request_id=deletion_request.id
             )
             
-            flash(f'Project "{project_name}" has been deleted.', 'success')
+            flash(f'Project "{project_name}" has been deleted. {file_cleanup_summary}', 'success')
         except Exception as e:
             db.session.rollback()
             flash(f'Error deleting project: {str(e)}', 'error')
@@ -287,7 +297,7 @@ def reject_deletion_request(request_id):
 @admin_required
 def projects():
     page = request.args.get('page', 1, type=int)
-    projects = Projet.query.paginate(
+    projects = Projet.query.options(joinedload(Projet.owner)).paginate(
         page=page, per_page=20, error_out=False
     )
     return render_template('admin/projects.html', projects=projects)
@@ -304,6 +314,10 @@ def delete_project(project_id):
     log_project_id = projet.id
     
     try:
+        # Delete associated files first
+        file_deletion_result = delete_project_files(projet)
+        file_cleanup_summary = get_file_cleanup_summary(file_deletion_result)
+        
         # Update project logs to set projet_id to NULL (preserve logs)
         for log in projet.logs:
             log.projet_id = None
@@ -314,13 +328,74 @@ def delete_project(project_id):
         
         # Log the action (this will be a system log since the project is gone)
         log_admin_action(
-            action="Direct Treatment Deletion",
-            details=f"Directly deleted treatment '{projet_name}' (ID: {log_project_id}) owned by user '{project_owner}'"
+            action="Direct Project Deletion",
+            details=f"Directly deleted project '{projet_name}' (ID: {log_project_id}) owned by user '{project_owner}'. {file_cleanup_summary}"
         )
         
-        flash(f'Treatment "{projet_name}" has been deleted.', 'success')
+        flash(f'Project "{projet_name}" has been deleted. {file_cleanup_summary}', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting project: {str(e)}', 'error')
     
     return redirect(url_for('admin.projects'))
+
+@admin_bp.route('/debug/project/<int:project_id>/files')
+@login_required
+@admin_required
+def debug_project_files(project_id):
+    """Debug route to check what files would be deleted for a project"""
+    projet = Projet.query.get_or_404(project_id)
+    
+    # Get file information without actually deleting
+    from app.utils.file_manager import _get_project_files, _get_treatment_files
+    
+    debug_info = {
+        'project_info': {
+            'id': projet.id,
+            'nom_projet': projet.nom_projet,
+            'fichier_1': projet.fichier_1,
+            'fichier_2': projet.fichier_2,
+            'emplacement_source': projet.emplacement_source,
+            'emplacement_archive': projet.emplacement_archive,
+            'user_id': projet.user_id
+        },
+        'project_files': _get_project_files(projet),
+        'treatments': []
+    }
+    
+    for treatment in projet.fichiers:
+        treatment_info = {
+            'id': treatment.id,
+            'nom_traitement_projet': treatment.nom_traitement_projet,
+            'nom_fichier_excel': treatment.nom_fichier_excel,
+            'nom_fichier_pdf': treatment.nom_fichier_pdf,
+            'nom_fichier_graphe': treatment.nom_fichier_graphe,
+            'chemin_archive': treatment.chemin_archive,
+            'files': _get_treatment_files(treatment)
+        }
+        debug_info['treatments'].append(treatment_info)
+    
+    # Check if files actually exist
+    import os
+    all_files = debug_info['project_files'].copy()
+    for treatment in debug_info['treatments']:
+        all_files.extend(treatment['files'])
+    
+    file_existence = {}
+    for file_path in all_files:
+        if file_path:
+            # Check both absolute and relative to uploads
+            abs_path = os.path.abspath(file_path) if not os.path.isabs(file_path) else file_path
+            uploads_path = os.path.join('uploads', file_path) if not os.path.isabs(file_path) else file_path
+            
+            file_existence[file_path] = {
+                'absolute_path': abs_path,
+                'uploads_path': uploads_path,
+                'exists_absolute': os.path.exists(abs_path),
+                'exists_uploads': os.path.exists(uploads_path),
+                'actual_path': abs_path if os.path.exists(abs_path) else (uploads_path if os.path.exists(uploads_path) else None)
+            }
+    
+    debug_info['file_existence'] = file_existence
+    
+    return jsonify(debug_info)

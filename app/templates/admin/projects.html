@@ -58,11 +58,11 @@
                                 <div class="flex items-center">
                                     <div class="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center mr-2">
                                         <span class="text-xs font-medium text-gray-700">
-                                            {{ project.user.username[0].upper() if project.user else 'N' }}
+                                            {{ project.owner.username[0].upper() if project.owner else 'N' }}
                                         </span>
                                     </div>
                                     <span class="text-gray-900 dark:text-white">
-                                        {{ project.user.username if project.user else 'Unknown' }}
+                                        {{ project.owner.username if project.owner else 'Unknown' }}
                                     </span>
                                 </div>
                             </td>

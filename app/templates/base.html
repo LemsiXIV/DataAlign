@@ -143,7 +143,7 @@
                         <a href="{{ url_for('projets.dashboard') }}"
                             class="block py-2 pl-3 pr-4 text-gray-700 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 md:dark:hover:text-white dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700
                             {% if request.endpoint == 'projets.dashboard' %}text-white bg-blue-700 md:bg-transparent md:text-blue-700{% endif %}"
-                            {% if request.endpoint == 'projets.dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+                            {% if request.endpoint == 'projets.dashboard' %}aria-current="page"{% endif %}>Traitement</a>
                     </li>
                     <li>
                         <a href="{{ url_for('notifications.notifications_page') }}"
@@ -165,7 +165,13 @@
                         <!-- Dropdown menu -->
                         <div id="admin-dropdown" class="z-50 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 dark:divide-gray-600">
                             <ul class="py-2 text-sm text-gray-700 dark:text-gray-400" aria-labelledby="admin-dropdown">
-                               
+                                <li>
+                                    <a href="{{ url_for('admin.dashboard') }}" 
+                                       class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white
+                                       {% if request.endpoint == 'admin.dashboard' %}bg-blue-50 text-blue-700 dark:bg-gray-600 dark:text-white{% endif %}">
+                                        📊 Dashboard
+                                    </a>
+                                </li>
                                 <li>
                                     <a href="{{ url_for('admin.users') }}" 
                                        class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white

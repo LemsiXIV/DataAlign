@@ -7,6 +7,7 @@ from app.models.fichier_genere import FichierGenere
 from app.models.logs import LogExecution
 from app.models.user import DeletionRequest, User
 from app.routes.notifications import create_notification
+from app.utils.file_manager import delete_project_files, get_file_cleanup_summary
 from datetime import datetime
 import os
 import zipfile
@@ -566,9 +567,13 @@ def request_treatment_deletion(fichier_genere_id):
     if current_user.is_admin():
         # Admin can delete directly
         try:
+            # Delete associated files first
+            file_deletion_result = delete_project_files(projet, fichier_genere)
+            file_cleanup_summary = get_file_cleanup_summary(file_deletion_result)
+            
             db.session.delete(fichier_genere)
             db.session.commit()
-            flash(f'Treatment "{treatment_name}" has been deleted successfully.', 'success')
+            flash(f'Treatment "{treatment_name}" has been deleted successfully. {file_cleanup_summary}', 'success')
         except Exception as e:
             db.session.rollback()
             flash('Error deleting treatment. Please try again.', 'error')
@@ -631,6 +636,10 @@ def request_deletion(projet_id):
     if current_user.is_admin():
         # Admin can delete directly - preserve logs like in admin route
         try:
+            # Delete associated files first
+            file_deletion_result = delete_project_files(projet)
+            file_cleanup_summary = get_file_cleanup_summary(file_deletion_result)
+            
             # Update project logs to set projet_id to NULL (preserve logs)
             for log in projet.logs:
                 log.projet_id = None
@@ -638,10 +647,10 @@ def request_deletion(projet_id):
             # Delete the project (cascade will handle related records except logs)
             db.session.delete(projet)
             db.session.commit()
-            flash(f'Treatment "{projet.nom_projet}" has been deleted successfully.', 'success')
+            flash(f'Project "{projet.nom_projet}" has been deleted successfully. {file_cleanup_summary}', 'success')
         except Exception as e:
             db.session.rollback()
-            flash('Error deleting treatment. Please try again.', 'error')
+            flash('Error deleting project. Please try again.', 'error')
     else:
         # Regular users must request deletion
         # Check if a deletion request already exists for this project

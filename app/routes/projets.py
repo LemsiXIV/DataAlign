@@ -300,7 +300,7 @@ def projet_details(projet_id):
 
 @projets_bp.route('/projet-chart/<int:projet_id>')
 def projet_chart(projet_id):
-    """Route pour servir le graphique d'un projet spécifique"""
+    """Route pour servir le graphique d'un projet spécifique (cherche le traitement le plus récent avec graphique)"""
     projet = Projet.query.get_or_404(projet_id)
     
     if not projet.emplacement_archive:
@@ -323,12 +323,103 @@ def projet_chart(projet_id):
     if not os.path.exists(archive_path):
         return jsonify({'error': f'Archive introuvable: {archive_path}'}), 404
     
-    chart_path = os.path.join(archive_path, "pie_chart.png")
+    # Try to find chart from the most recent treatment first
+    from app.models.fichier_genere import FichierGenere
+    recent_treatment = FichierGenere.query.filter_by(projet_id=projet_id)\
+                                         .filter(FichierGenere.nom_fichier_graphe.isnot(None))\
+                                         .order_by(FichierGenere.date_execution.desc())\
+                                         .first()
     
-    if not os.path.exists(chart_path):
-        return jsonify({'error': f'Graphique introuvable: {chart_path}'}), 404
+    chart_path = None
+    if recent_treatment and recent_treatment.nom_fichier_graphe:
+        # New format: chart is in treatment folder with relative path
+        if recent_treatment.chemin_archive:
+            chart_path = os.path.join(recent_treatment.chemin_archive, os.path.basename(recent_treatment.nom_fichier_graphe))
+        else:
+            # Fallback: construct path from archive + relative path
+            chart_path = os.path.join(archive_path, recent_treatment.nom_fichier_graphe)
+    
+    # Fallback: look for old format chart in main archive folder
+    if not chart_path or not os.path.exists(chart_path):
+        old_chart_path = os.path.join(archive_path, "pie_chart.png")
+        if os.path.exists(old_chart_path):
+            chart_path = old_chart_path
+    
+    if not chart_path or not os.path.exists(chart_path):
+        return jsonify({'error': f'Graphique introuvable pour le projet {projet_id}'}), 404
     
     return send_file(chart_path, mimetype='image/png')
+
+@projets_bp.route('/treatment-chart/<int:treatment_id>')
+def treatment_chart(treatment_id):
+    """Route pour servir le graphique d'un traitement spécifique"""
+    from app.models.fichier_genere import FichierGenere
+    
+    try:
+        treatment = FichierGenere.query.get_or_404(treatment_id)
+        print(f"DEBUG: Treatment found - ID: {treatment_id}, nom_fichier_graphe: {treatment.nom_fichier_graphe}")
+        print(f"DEBUG: Treatment chemin_archive: {treatment.chemin_archive}")
+        
+        if not treatment.nom_fichier_graphe:
+            print(f"DEBUG: No chart file specified for treatment {treatment_id}")
+            return jsonify({'error': 'Aucun graphique disponible pour ce traitement'}), 404
+        
+        # Build the full path to the chart
+        chart_path = None
+        if treatment.chemin_archive:
+            # New format: chart is in treatment folder
+            # If nom_fichier_graphe contains a path, use just the filename
+            if '/' in treatment.nom_fichier_graphe or '\\' in treatment.nom_fichier_graphe:
+                chart_filename = os.path.basename(treatment.nom_fichier_graphe)
+            else:
+                chart_filename = treatment.nom_fichier_graphe
+            
+            # Ensure we have the correct absolute path
+            if os.path.isabs(treatment.chemin_archive):
+                chart_path = os.path.join(treatment.chemin_archive, chart_filename)
+            else:
+                # chemin_archive is relative to project root, not app directory
+                current_dir = os.getcwd()
+                if current_dir.endswith('app'):
+                    project_root = os.path.dirname(current_dir)
+                else:
+                    project_root = current_dir
+                chart_path = os.path.join(project_root, treatment.chemin_archive, chart_filename)
+            
+            print(f"DEBUG: New format chart path: {chart_path}")
+        else:
+            # Fallback: old format
+            projet = treatment.projet
+            if projet and projet.emplacement_archive:
+                if os.path.isabs(projet.emplacement_archive):
+                    archive_path = projet.emplacement_archive
+                else:
+                    current_dir = os.getcwd()
+                    if current_dir.endswith('app'):
+                        project_root = os.path.dirname(current_dir)
+                    else:
+                        project_root = current_dir
+                    archive_path = os.path.join(project_root, projet.emplacement_archive)
+                
+                chart_path = os.path.join(archive_path, treatment.nom_fichier_graphe)
+                print(f"DEBUG: Fallback chart path: {chart_path}")
+        
+        print(f"DEBUG: Final chart path: {chart_path}")
+        print(f"DEBUG: Chart path exists: {os.path.exists(chart_path) if chart_path else 'No path'}")
+        
+        if not chart_path or not os.path.exists(chart_path):
+            # Try to find any chart files in the treatment directory for debugging
+            if treatment.chemin_archive and os.path.exists(treatment.chemin_archive):
+                files_in_dir = os.listdir(treatment.chemin_archive)
+                print(f"DEBUG: Files in treatment directory: {files_in_dir}")
+            
+            return jsonify({'error': f'Graphique introuvable: {chart_path}'}), 404
+        
+        return send_file(chart_path, mimetype='image/png')
+        
+    except Exception as e:
+        print(f"DEBUG: Error in treatment_chart: {str(e)}")
+        return jsonify({'error': f'Erreur: {str(e)}'}), 500
 
 @projets_bp.route('/download-project-zip/<int:projet_id>')
 def download_project_zip(projet_id):
@@ -365,12 +456,22 @@ def download_project_zip(projet_id):
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Vérifier si emplacement_archive est un dossier ou un chemin
             if os.path.isdir(archive_path):
-                # Ajouter seulement les fichiers du dossier spécifique (pas les sous-dossiers)
-                for file in os.listdir(archive_path):
-                    file_path = os.path.join(archive_path, file)
-                    # Ajouter seulement les fichiers (pas les dossiers)
-                    if os.path.isfile(file_path):
-                        zipf.write(file_path, file)
+                # Ajouter tous les fichiers et dossiers récursivement
+                for root, dirs, files in os.walk(archive_path):
+                    # Calculer le chemin relatif depuis archive_path
+                    relative_root = os.path.relpath(root, archive_path)
+                    
+                    # Ajouter tous les fichiers
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Créer le nom d'archive en préservant la structure des dossiers
+                        if relative_root == '.':
+                            # Fichier à la racine
+                            archive_name = file
+                        else:
+                            # Fichier dans un sous-dossier
+                            archive_name = os.path.join(relative_root, file).replace('\\', '/')
+                        zipf.write(file_path, archive_name)
             else:
                 flash("L'emplacement d'archive n'est pas un dossier valide", "error")
                 return redirect(url_for('projets.dashboard'))
@@ -386,6 +487,121 @@ def download_project_zip(projet_id):
     
     except Exception as e:
         flash(f"Erreur lors de la création du ZIP : {e}", "error")
+        return redirect(url_for('projets.dashboard'))
+    finally:
+        # Nettoyer le fichier temporaire
+        if os.path.exists(zip_path):
+            try:
+                os.remove(zip_path)
+            except:
+                pass
+
+@projets_bp.route('/download-treatment-zip/<int:treatment_id>')
+def download_treatment_zip(treatment_id):
+    """Route pour télécharger les fichiers d'un traitement spécifique en ZIP"""
+    from app.models.fichier_genere import FichierGenere
+    
+    treatment = FichierGenere.query.get_or_404(treatment_id)
+    projet = treatment.projet
+    
+    if not treatment.chemin_archive:
+        flash("Dossier de traitement introuvable", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    # Construire le chemin absolu du traitement
+    if os.path.isabs(treatment.chemin_archive):
+        treatment_path = treatment.chemin_archive
+    else:
+        # chemin_archive est relatif à la racine du projet
+        current_dir = os.getcwd()
+        if current_dir.endswith('app'):
+            project_root = os.path.dirname(current_dir)
+        else:
+            project_root = current_dir
+        treatment_path = os.path.join(project_root, treatment.chemin_archive)
+    
+    if not os.path.exists(treatment_path):
+        flash(f"Dossier de traitement introuvable: {treatment_path}", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    # Créer un fichier ZIP temporaire
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
+        zip_path = tmp_file.name
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            if os.path.isdir(treatment_path):
+                # Ajouter tous les fichiers du traitement
+                for root, dirs, files in os.walk(treatment_path):
+                    # Calculer le chemin relatif depuis treatment_path
+                    relative_root = os.path.relpath(root, treatment_path)
+                    
+                    # Ajouter tous les fichiers
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Créer le nom d'archive en préservant la structure des dossiers
+                        if relative_root == '.':
+                            # Fichier à la racine du traitement
+                            archive_name = f"treatment_results/{file}"
+                        else:
+                            # Fichier dans un sous-dossier du traitement
+                            archive_name = f"treatment_results/{os.path.join(relative_root, file).replace('\\', '/')}"
+                        zipf.write(file_path, archive_name)
+                
+                # Ajouter les fichiers sources originaux si disponibles
+                if projet and projet.emplacement_source:
+                    # Construire le chemin absolu du dossier source
+                    if os.path.isabs(projet.emplacement_source):
+                        source_path = projet.emplacement_source
+                    else:
+                        current_dir = os.getcwd()
+                        if current_dir.endswith('app'):
+                            project_root = os.path.dirname(current_dir)
+                        else:
+                            project_root = current_dir
+                        source_path = os.path.join(project_root, projet.emplacement_source)
+                    
+                    if os.path.exists(source_path) and os.path.isdir(source_path):
+                        print(f"DEBUG: Adding specific original files from {source_path}")
+                        
+                        # Add only the specific original files (fichier_1 and fichier_2)
+                        original_files = []
+                        if projet.fichier_1:
+                            original_files.append(projet.fichier_1)
+                        if projet.fichier_2:
+                            original_files.append(projet.fichier_2)
+                        
+                        for original_filename in original_files:
+                            if original_filename:
+                                # Clean filename (remove any path components)
+                                clean_filename = os.path.basename(original_filename)
+                                original_file_path = os.path.join(source_path, clean_filename)
+                                
+                                if os.path.exists(original_file_path) and os.path.isfile(original_file_path):
+                                    archive_name = f"original_files/{clean_filename}"
+                                    zipf.write(original_file_path, archive_name)
+                                    print(f"DEBUG: Added original file {clean_filename} as {archive_name}")
+                                else:
+                                    print(f"DEBUG: Original file not found: {original_file_path}")
+                    else:
+                        print(f"DEBUG: Source path does not exist or is not a directory: {source_path}")
+                        
+            else:
+                flash("Le chemin de traitement n'est pas un dossier valide", "error")
+                return redirect(url_for('projets.dashboard'))
+        
+        # Nom du fichier ZIP avec le nom du traitement et la date
+        treatment_name = treatment.nom_traitement_projet or f"Treatment_{treatment.id}"
+        date_str = treatment.date_execution.strftime('%Y%m%d_%H%M%S') if treatment.date_execution else 'unknown'
+        zip_filename = f"{treatment_name}_{date_str}.zip"
+        
+        return send_file(zip_path, 
+                        as_attachment=True, 
+                        download_name=zip_filename,
+                        mimetype='application/zip')
+    
+    except Exception as e:
+        flash(f"Erreur lors de la création du ZIP de traitement : {e}", "error")
         return redirect(url_for('projets.dashboard'))
     finally:
         # Nettoyer le fichier temporaire
@@ -426,6 +642,71 @@ def download_report_file(projet_id, filename):
     
     if not os.path.exists(file_path):
         flash(f"Fichier introuvable: {file_path}", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    return send_file(file_path, as_attachment=True, download_name=filename)
+
+@projets_bp.route('/download-treatment-file/<int:treatment_id>/<file_type>')
+def download_treatment_file(treatment_id, file_type):
+    """Route pour télécharger un fichier spécifique d'un traitement (excel, pdf, chart)"""
+    from app.models.fichier_genere import FichierGenere
+    
+    treatment = FichierGenere.query.get_or_404(treatment_id)
+    
+    if not treatment.chemin_archive:
+        flash("Dossier de traitement introuvable", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    # Construire le chemin absolu du traitement
+    if os.path.isabs(treatment.chemin_archive):
+        treatment_path = treatment.chemin_archive
+    else:
+        # chemin_archive est relatif à la racine du projet
+        current_dir = os.getcwd()
+        if current_dir.endswith('app'):
+            project_root = os.path.dirname(current_dir)
+        else:
+            project_root = current_dir
+        treatment_path = os.path.join(project_root, treatment.chemin_archive)
+    
+    if not os.path.exists(treatment_path):
+        flash(f"Dossier de traitement introuvable: {treatment_path}", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    # Déterminer le fichier à télécharger selon le type
+    file_path = None
+    filename = None
+    
+    if file_type == 'excel' and treatment.nom_fichier_excel:
+        if '/' in treatment.nom_fichier_excel or '\\' in treatment.nom_fichier_excel:
+            # Path relatif stocké dans la DB
+            filename = os.path.basename(treatment.nom_fichier_excel)
+        else:
+            filename = treatment.nom_fichier_excel
+        file_path = os.path.join(treatment_path, filename)
+        
+    elif file_type == 'pdf' and treatment.nom_fichier_pdf:
+        if '/' in treatment.nom_fichier_pdf or '\\' in treatment.nom_fichier_pdf:
+            # Path relatif stocké dans la DB
+            filename = os.path.basename(treatment.nom_fichier_pdf)
+        else:
+            filename = treatment.nom_fichier_pdf
+        file_path = os.path.join(treatment_path, filename)
+        
+    elif file_type == 'chart' and treatment.nom_fichier_graphe:
+        if '/' in treatment.nom_fichier_graphe or '\\' in treatment.nom_fichier_graphe:
+            # Path relatif stocké dans la DB
+            filename = os.path.basename(treatment.nom_fichier_graphe)
+        else:
+            filename = treatment.nom_fichier_graphe
+        file_path = os.path.join(treatment_path, filename)
+    
+    if not file_path or not filename:
+        flash(f"Fichier {file_type} non disponible pour ce traitement", "error")
+        return redirect(url_for('projets.dashboard'))
+    
+    if not os.path.exists(file_path):
+        flash(f"Fichier {file_type} introuvable: {file_path}", "error")
         return redirect(url_for('projets.dashboard'))
     
     return send_file(file_path, as_attachment=True, download_name=filename)

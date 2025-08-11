@@ -72,20 +72,30 @@
                                 
                                 <!-- Action Buttons -->
                                 <div class="flex space-x-2 pt-2 border-t border-gray-100">
-                                    <button onclick="showProjectDetails({{ traitement.projet_id }})"
-                                            class="flex-1 bg-blue-500 text-white px-3 py-2 rounded-md text-xs hover:bg-blue-600 transition-colors">
+                                    <button class="treatment-details-btn flex-1 bg-gray-500 text-white px-3 py-2 rounded-md text-xs hover:bg-gray-600 transition-colors"
+                                            data-project-id="{{ traitement.projet_id }}"
+                                            data-treatment-id="{{ traitement.id }}"
+                                            data-project-name="{{ traitement.nom_projet }}"
+                                            data-formatted-date="{{ traitement.formatted_date }}"
+                                            data-fichier-1="{{ traitement.fichier_1 }}"
+                                            data-fichier-2="{{ traitement.fichier_2 }}"
+                                            data-emplacement-archive="{{ traitement.emplacement_archive }}"
+                                            data-has-excel="{{ traitement.has_excel }}"
+                                            data-has-pdf="{{ traitement.has_pdf }}"
+                                            data-has-chart="{{ traitement.has_chart }}"
+                                            data-has-files="{{ traitement.has_files }}">
                                         ℹ️ Détails
                                     </button>
                                     
                                     {% if traitement.has_files %}
-                                    <a href="{{ url_for('projets.download_project_zip', projet_id=traitement.projet_id) }}"
+                                    <a href="{{ url_for('projets.download_treatment_zip', treatment_id=traitement.id) }}"
                                        class="flex-1 bg-green-500 text-white px-3 py-2 rounded-md text-xs hover:bg-green-600 transition-colors text-center">
                                         📦 ZIP
                                     </a>
                                     {% endif %}
                                     
                                     {% if traitement.has_chart %}
-                                    <button onclick="showProjectChart({{ traitement.projet_id }})"
+                                    <button onclick="showTreatmentChart({{ traitement.id }}, '{{ traitement.nom_projet }}', '{{ traitement.formatted_date }}')"
                                             class="flex-1 bg-purple-500 text-white px-3 py-2 rounded-md text-xs hover:bg-purple-600 transition-colors">
                                         📊 Graphique
                                     </button>
@@ -266,8 +276,8 @@
             }
         }
         
-        function showProjectDetails(projectId) {
-            console.log(`Chargement des détails pour le projet ID: ${projectId}`);
+        function showProjectDetails(projectId, treatmentId) {
+            console.log(`Chargement des détails pour le projet ID: ${projectId}, traitement ID: ${treatmentId}`);
             
             fetch(`/projet-details/${projectId}`)
                 .then(response => {
@@ -284,6 +294,9 @@
                     if (data.error) {
                         throw new Error(data.message || 'Erreur inconnue');
                     }
+                    
+                    // Ajouter l'ID du traitement aux données pour les téléchargements
+                    data.treatment_id = treatmentId;
                     
                     document.getElementById('modalTitle').textContent = `Projet: ${data.nom_projet || 'Nom inconnu'}`;
                     
@@ -356,23 +369,18 @@
                     const modalActions = document.getElementById('modalActions');
                     let actionsHtml = '';
                     
-                    // Afficher le bouton ZIP seulement s'il y a des fichiers à télécharger
-                    if (data.has_files_to_download) {
-                        actionsHtml += `<a href="/download-project-zip/${projectId}" class="text-white bg-yellow-400 hover:bg-yellow-500 focus:ring-4 focus:outline-none focus:ring-yellow-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
-                            📦 Télécharger ZIP
-                        </a>`;
-                    }
+                    
                     
                     // Afficher le bouton Excel seulement si le fichier existe
                     if (data.has_excel) {
-                        actionsHtml += `<a href="/download-report-file/${projectId}/rapport_comparaison.xlsx" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                        actionsHtml += `<a href="/download-treatment-file/${data.treatment_id}/excel" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
                             📊 Télécharger Excel
                         </a>`;
                     }
                     
                     // Afficher le bouton PDF seulement si le fichier existe
                     if (data.has_pdf) {
-                        actionsHtml += `<a href="/download-report-file/${projectId}/rapport_comparaison.pdf" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                        actionsHtml += `<a href="/download-treatment-file/${data.treatment_id}/pdf" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
                             📄 Télécharger PDF
                         </a>`;
                     }
@@ -433,13 +441,24 @@
             }
         }
         
-        // Fonction pour afficher le graphique d'un projet
+        // Fonction pour afficher le graphique d'un projet (legacy function)
         function showProjectChart(projectId) {
             const chartImg = document.getElementById('chartImage');
             const chartTitle = document.getElementById('chartModalTitle');
             
             chartImg.src = `/projet-chart/${projectId}`;
             chartTitle.textContent = `Graphique du projet ID: ${projectId}`;
+            
+            document.getElementById('chartModal').classList.remove('hidden');
+        }
+        
+        // Fonction pour afficher le graphique d'un traitement spécifique
+        function showTreatmentChart(treatmentId, projectName, treatmentDate) {
+            const chartImg = document.getElementById('chartImage');
+            const chartTitle = document.getElementById('chartModalTitle');
+            
+            chartImg.src = `/treatment-chart/${treatmentId}`;
+            chartTitle.textContent = `Graphique - ${projectName} (${treatmentDate})`;
             
             document.getElementById('chartModal').classList.remove('hidden');
         }
@@ -492,6 +511,104 @@
             document.getElementById('deleteReason').value = '';
         }
         
+        // Function to show treatment-specific details without API call
+        function showTreatmentDetailsModal(projectId, treatmentId, projectName, formattedDate, fichier1, fichier2, emplacementArchive, hasExcel, hasPdf, hasChart, hasFiles) {
+            console.log(`Affichage des détails du traitement ID: ${treatmentId} pour le projet: ${projectName}`);
+            
+            document.getElementById('modalTitle').textContent = `Traitement: ${projectName}`;
+            
+            const modalInfo = document.getElementById('modalInfo');
+            modalInfo.innerHTML = `
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">Informations du traitement</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-600">Nom du projet:</span>
+                                    <span class="text-gray-800">${projectName}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-600">Date d'exécution:</span>
+                                    <span class="text-gray-800">${formattedDate}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-600">ID du traitement:</span>
+                                    <span class="text-gray-800">${treatmentId}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="font-medium text-gray-600">ID du projet:</span>
+                                    <span class="text-gray-800">${projectId}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">Fichiers traités</h4>
+                            <div class="space-y-2 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-600">Fichier 1:</span>
+                                    <div class="text-gray-800 break-all">${fichier1}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Fichier 2:</span>
+                                    <div class="text-gray-800 break-all">${fichier2}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-2">Emplacement d'archive</h4>
+                    <p class="text-sm text-gray-600 break-all">${emplacementArchive}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-2">Fichiers disponibles</h4>
+                    <div class="grid grid-cols-3 gap-4 text-sm">
+                        <div class="text-center">
+                            <div class="text-2xl ${hasExcel ? 'text-green-600' : 'text-gray-400'}">${hasExcel ? '✓' : '✗'}</div>
+                            <div class="text-gray-600">Excel</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl ${hasPdf ? 'text-green-600' : 'text-gray-400'}">${hasPdf ? '✓' : '✗'}</div>
+                            <div class="text-gray-600">PDF</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl ${hasChart ? 'text-green-600' : 'text-gray-400'}">${hasChart ? '✓' : '✗'}</div>
+                            <div class="text-gray-600">Graphique</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalActions = document.getElementById('modalActions');
+            let actionsHtml = '';
+            
+            // Afficher le bouton Excel seulement si le fichier existe
+            if (hasExcel) {
+                actionsHtml += `<a href="/download-treatment-file/${treatmentId}/excel" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                    📊 Télécharger Excel
+                </a>`;
+            }
+            
+            // Afficher le bouton PDF seulement si le fichier existe
+            if (hasPdf) {
+                actionsHtml += `<a href="/download-treatment-file/${treatmentId}/pdf" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                    📄 Télécharger PDF
+                </a>`;
+            }
+            
+            // Si aucun fichier n'est disponible, afficher un message
+            if (!hasExcel && !hasPdf) {
+                actionsHtml = `<div class="text-gray-500 text-sm text-center py-4">
+                    <p>🚫 Aucun fichier de rapport disponible pour le téléchargement</p>
+                </div>`;
+            }
+            
+            modalActions.innerHTML = actionsHtml;
+            
+            document.getElementById('projectModal').classList.remove('hidden');
+        }
+        
         // Add event listeners for delete buttons
         document.addEventListener('DOMContentLoaded', function() {
             const deleteButtons = document.querySelectorAll('.delete-project-btn');
@@ -504,6 +621,26 @@
                     const isFichierGenere = this.getAttribute('data-is-fichier-genere');
                     const isAdmin = this.getAttribute('data-is-admin');
                     showDeleteModal(treatmentId, projectId, projectName, projectDate, isFichierGenere, isAdmin);
+                });
+            });
+            
+            // Add event listeners for treatment details buttons
+            const treatmentDetailsButtons = document.querySelectorAll('.treatment-details-btn');
+            treatmentDetailsButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const projectId = this.getAttribute('data-project-id');
+                    const treatmentId = this.getAttribute('data-treatment-id');
+                    const projectName = this.getAttribute('data-project-name');
+                    const formattedDate = this.getAttribute('data-formatted-date');
+                    const fichier1 = this.getAttribute('data-fichier-1');
+                    const fichier2 = this.getAttribute('data-fichier-2');
+                    const emplacementArchive = this.getAttribute('data-emplacement-archive');
+                    const hasExcel = this.getAttribute('data-has-excel') === 'True';
+                    const hasPdf = this.getAttribute('data-has-pdf') === 'True';
+                    const hasChart = this.getAttribute('data-has-chart') === 'True';
+                    const hasFiles = this.getAttribute('data-has-files') === 'True';
+                    
+                    showTreatmentDetailsModal(projectId, treatmentId, projectName, formattedDate, fichier1, fichier2, emplacementArchive, hasExcel, hasPdf, hasChart, hasFiles);
                 });
             });
             

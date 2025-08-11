@@ -126,17 +126,24 @@ def compare():
         
         if project_folder and os.path.exists(project_folder):
             try:
+                # Create unique treatment folder with timestamp
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                treatment_folder = os.path.join(project_folder, f"treatment_{timestamp}")
+                
+                # Create the treatment folder if it doesn't exist
+                os.makedirs(treatment_folder, exist_ok=True)
+                
                 # Generate Excel file
                 generateur_excel = GenerateurExcel(
                     results['ecarts_fichier1'], 
                     results['ecarts_fichier2'], 
                     results['communs'],
-                    project_folder
+                    treatment_folder  # Save to treatment folder instead of project folder
                 )
                 
-                # Save Excel file to project archive folder
-                excel_filename = f"rapport_comparaison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-                excel_path = os.path.join(project_folder, excel_filename)
+                # Save Excel file to treatment folder
+                excel_filename = f"rapport_comparaison_{timestamp}.xlsx"
+                excel_path = os.path.join(treatment_folder, excel_filename)
                 generateur_excel.generer_rapport_fichier(excel_path)
                 
                 # Generate PDF file - need to get file sizes safely
@@ -161,13 +168,36 @@ def compare():
                     file1_size,
                     file2_size,
                     results['n_common'],
-                    project_folder
+                    treatment_folder  # Save to treatment folder instead of project folder
                 )
                 
-                # Save PDF file to project archive folder
-                pdf_filename = f"rapport_comparaison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                pdf_path = os.path.join(project_folder, pdf_filename)
+                # Save PDF file to treatment folder
+                pdf_filename = f"rapport_comparaison_{timestamp}.pdf"
+                pdf_path = os.path.join(treatment_folder, pdf_filename)
                 generateur_pdf.generer_pdf_fichier(pdf_path)
+                
+                # Ensure chart file exists in treatment folder
+                chart_filename = "pie_chart.png"
+                chart_path = os.path.join(treatment_folder, chart_filename)
+                
+                # Check if chart was created by PDF generator
+                if not os.path.exists(chart_path):
+                    print(f"DEBUG: Chart not found at {chart_path}, checking other locations...")
+                    # Try to find chart in current directory or project folder
+                    possible_chart_locations = [
+                        os.path.join(os.getcwd(), "pie_chart.png"),
+                        os.path.join(project_folder, "pie_chart.png"),
+                        "pie_chart.png"
+                    ]
+                    
+                    for possible_location in possible_chart_locations:
+                        if os.path.exists(possible_location):
+                            print(f"DEBUG: Found chart at {possible_location}, copying to {chart_path}")
+                            import shutil
+                            shutil.copy2(possible_location, chart_path)
+                            break
+                    else:
+                        print(f"DEBUG: No chart file found in any expected location")
                 
                 # Clean up matplotlib resources to prevent threading issues
                 GenerateurPdf.cleanup_matplotlib()
@@ -183,33 +213,25 @@ def compare():
                 # Save generated files info to database
                 projet = Projet.query.get(projet_id)
                 if projet:
-                    # Check if there's already a recent treatment (within 5 minutes) for this project
-                    cutoff_time = datetime.now() - timedelta(minutes=5)
+                    # Create unique treatment name using the same timestamp
+                    nom_traitement = f"Traitement_{timestamp}"
                     
-                    fichier_existant = FichierGenere.query.filter(
-                        FichierGenere.projet_id == projet_id,
-                        FichierGenere.date_execution >= cutoff_time
-                    ).order_by(FichierGenere.date_execution.desc()).first()
+                    # Store the relative paths from the project archive folder
+                    relative_excel_path = f"treatment_{timestamp}/{excel_filename}"
+                    relative_pdf_path = f"treatment_{timestamp}/{pdf_filename}"
+                    relative_chart_path = f"treatment_{timestamp}/pie_chart.png"
                     
-                    if fichier_existant:
-                        # Update existing record with new files
-                        fichier_existant.nom_fichier_excel = excel_filename
-                        fichier_existant.nom_fichier_pdf = pdf_filename
-                        fichier_existant.nom_fichier_graphe = "pie_chart.png"
-                        fichier_existant.date_execution = datetime.now()
-                    else:
-                        # Create new treatment record
-                        nom_traitement = f"Traitement_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                        fichier_genere = FichierGenere(
-                            projet_id=projet_id,
-                            nom_traitement_projet=nom_traitement,
-                            nom_fichier_excel=excel_filename,
-                            nom_fichier_pdf=pdf_filename,
-                            nom_fichier_graphe="pie_chart.png",
-                            chemin_archive=projet.emplacement_archive,
-                            date_execution=datetime.now()
-                        )
-                        db.session.add(fichier_genere)
+                    # Always create new treatment record with unique archive path and relative file paths
+                    fichier_genere = FichierGenere(
+                        projet_id=projet_id,
+                        nom_traitement_projet=nom_traitement,
+                        nom_fichier_excel=relative_excel_path,
+                        nom_fichier_pdf=relative_pdf_path,
+                        nom_fichier_graphe=relative_chart_path,
+                        chemin_archive=treatment_folder,
+                        date_execution=datetime.now()
+                    )
+                    db.session.add(fichier_genere)
                 
                 db.session.commit()
                 

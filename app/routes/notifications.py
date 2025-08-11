@@ -70,6 +70,37 @@ def mark_all_notifications_read():
     
     return jsonify({'success': True, 'message': 'All notifications marked as read'})
 
+@notifications_bp.route('/api/notifications/<int:notification_id>/delete', methods=['DELETE'])
+@login_required
+def delete_notification(notification_id):
+    """Delete a specific notification"""
+    notification = Notification.query.filter_by(
+        id=notification_id, 
+        user_id=current_user.id
+    ).first_or_404()
+    
+    db.session.delete(notification)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Notification deleted'})
+
+@notifications_bp.route('/api/notifications/delete-read', methods=['DELETE'])
+@login_required
+def delete_all_read_notifications():
+    """Delete all read notifications for the current user"""
+    deleted_count = Notification.query.filter_by(
+        user_id=current_user.id, 
+        is_read=True
+    ).delete()
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True, 
+        'message': f'{deleted_count} read notifications deleted',
+        'deleted_count': deleted_count
+    })
+
 @notifications_bp.route('/test-admin-notifications')
 @login_required
 def test_admin_notifications():

@@ -264,10 +264,17 @@ def reject_deletion_request(request_id):
     )
     
     # Create notification for the user
+    admin_message = deletion_request.admin_comments.strip() if deletion_request.admin_comments else ''
+    notification_message = f"Your deletion request has been rejected."
+    if admin_message:
+        notification_message += f" Reason: {admin_message}"
+    else:
+        notification_message += " No additional reason was provided."
+    
     create_notification(
         user_id=deletion_request.user_id,
         title="Deletion Request Rejected",
-        message=f"Your deletion request has been rejected. {deletion_request.admin_comments or 'No additional comments provided.'}",
+        message=notification_message,
         notification_type='warning',
         related_request_id=deletion_request.id
     )

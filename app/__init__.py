@@ -65,7 +65,7 @@ def create_app(config_name=None):
     app.register_blueprint(fichiers_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp)
-    app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(notifications_bp)
 
     return app

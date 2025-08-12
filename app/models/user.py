@@ -1,8 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 from app import db
+import secrets
+import string
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -16,6 +18,10 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    
+    # Password Reset fields
+    reset_token = db.Column(db.String(100), nullable=True, unique=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
     
     # Relationships
     projets = db.relationship('Projet', back_populates='owner', lazy=True)
@@ -41,6 +47,35 @@ class User(UserMixin, db.Model):
         """Check if user can edit a project"""
         # For now, only admin can edit until we add owner_id to Projet model
         return self.is_admin()
+    
+    def generate_reset_token(self):
+        """Generate a secure reset token"""
+        # Generate a random token
+        alphabet = string.ascii_letters + string.digits
+        token = ''.join(secrets.choice(alphabet) for i in range(32))
+        
+        # Set token and expiration (24 hours)
+        self.reset_token = token
+        self.reset_token_expires = datetime.utcnow() + timedelta(hours=24)
+        
+        return token
+    
+    def verify_reset_token(self, token):
+        """Verify if the reset token is valid and not expired"""
+        if not self.reset_token or not self.reset_token_expires:
+            return False
+        
+        # Check if token matches and hasn't expired
+        if (self.reset_token == token and 
+            datetime.utcnow() < self.reset_token_expires):
+            return True
+        
+        return False
+    
+    def clear_reset_token(self):
+        """Clear the reset token after use"""
+        self.reset_token = None
+        self.reset_token_expires = None
     
     def __repr__(self):
         return f'<User {self.username}>'

@@ -21,7 +21,7 @@ def create_admin_user():
         
         # Create admin user
         admin_user = User(
-            username='admin',
+            username='testVikinn',
             email='admin@dataalign.com',
             full_name='Administrator',
             password_hash=generate_password_hash('admin123'),  # Change this password!
@@ -33,7 +33,7 @@ def create_admin_user():
             db.session.add(admin_user)
             db.session.commit()
             print("✅ Admin user created successfully!")
-            print("Username: admin")
+            print("Username: testVikinn")
             print("Password: admin123")
             print("⚠️  Please change the password after first login!")
             

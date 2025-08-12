@@ -48,11 +48,23 @@ def index():
 
 
 @projets_bp.route('/dashboard')
+@login_required
 def dashboard():
     """Route pour afficher le dashboard avec l'arborescence des projets"""
-    # Récupérer tous les projets avec leurs fichiers générés
-    projets = Projet.query.order_by(Projet.nom_projet, Projet.date_creation.desc()).all()
-    stats = StatistiqueEcart.query.all()
+    # Filtrer les projets selon les permissions utilisateur
+    if current_user.is_admin():
+        # Administrateur : voir tous les projets
+        projets = Projet.query.order_by(Projet.nom_projet, Projet.date_creation.desc()).all()
+        stats = StatistiqueEcart.query.all()
+    else:
+        # Utilisateur normal : voir seulement ses projets
+        projets = Projet.query.filter_by(user_id=current_user.id).order_by(Projet.nom_projet, Projet.date_creation.desc()).all()
+        # Statistiques seulement pour ses projets
+        projet_ids = [p.id for p in projets]
+        if projet_ids:
+            stats = StatistiqueEcart.query.filter(StatistiqueEcart.projet_id.in_(projet_ids)).all()
+        else:
+            stats = []
     
     # Organiser les projets en arborescence avec leurs traitements
     projets_tree = defaultdict(list)
@@ -134,12 +146,21 @@ def dashboard():
     return render_template('Dashboard.html', projets_tree=dict(projets_tree), stats=stats)
 
 @projets_bp.route('/projet-details/<int:projet_id>')
+@login_required
 def projet_details(projet_id):
     """Route pour afficher les détails d'un projet spécifique dans une popup"""
     try:
         print(f"DEBUG: Début traitement projet ID: {projet_id}")
         
         projet = Projet.query.get_or_404(projet_id)
+        
+        # Vérifier les permissions : seul le propriétaire ou l'admin peut voir les détails
+        if not current_user.is_admin() and projet.user_id != current_user.id:
+            return jsonify({
+                'error': True,
+                'message': 'Accès non autorisé à ce projet'
+            }), 403
+        
         print(f"DEBUG: Projet trouvé: {projet.nom_projet}")
         
         # Vérifier si les fichiers de rapport existent dans le dossier archive
@@ -298,10 +319,88 @@ def projet_details(projet_id):
             'details': error_details
         }), 500
 
+@projets_bp.route('/project-evolution/<int:project_id>')
+@login_required
+def project_evolution(project_id):
+    """Route pour récupérer l'évolution des statistiques d'un projet"""
+    try:
+        # Vérifier que le projet existe
+        projet = Projet.query.get_or_404(project_id)
+        
+        # Vérifier les permissions : seul le propriétaire ou l'admin peut voir l'évolution
+        if not current_user.is_admin() and projet.user_id != current_user.id:
+            return jsonify({
+                'error': True,
+                'message': 'Accès non autorisé à ce projet'
+            }), 403
+        
+        # Récupérer toutes les statistiques pour ce projet, triées par date
+        statistiques = StatistiqueEcart.query.filter_by(projet_id=project_id).order_by(StatistiqueEcart.date_execution.asc()).all()
+        
+        if not statistiques:
+            return jsonify({
+                'error': False,
+                'message': 'Aucune donnée d\'évolution disponible pour ce projet',
+                'dates': [],
+                'ecarts_fichier1': [],
+                'ecarts_fichier2': [],
+                'ecarts_communs': [],
+                'total_ecarts': []
+            })
+        
+        # Préparer les données pour le graphique
+        dates = []
+        ecarts_fichier1 = []
+        ecarts_fichier2 = []
+        ecarts_communs = []
+        total_ecarts = []
+        
+        for stat in statistiques:
+            # Formater la date
+            date_str = stat.date_execution.strftime("%d/%m/%Y %H:%M") if stat.date_execution else "N/A"
+            dates.append(date_str)
+            
+            # Ajouter les données (avec valeurs par défaut si None)
+            f1_ecarts = stat.nb_ecarts_uniquement_fichier1 or 0
+            f2_ecarts = stat.nb_ecarts_uniquement_fichier2 or 0
+            communs = stat.nb_ecarts_communs or 0
+            
+            ecarts_fichier1.append(f1_ecarts)
+            ecarts_fichier2.append(f2_ecarts)
+            ecarts_communs.append(communs)
+            total_ecarts.append(f1_ecarts + f2_ecarts)
+        
+        return jsonify({
+            'error': False,
+            'project_name': projet.nom_projet,
+            'dates': dates,
+            'ecarts_fichier1': ecarts_fichier1,
+            'ecarts_fichier2': ecarts_fichier2,
+            'ecarts_communs': ecarts_communs,
+            'total_ecarts': total_ecarts
+        })
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERREUR dans project_evolution pour projet {project_id}:")
+        print(error_details)
+        
+        return jsonify({
+            'error': True,
+            'message': f"Erreur lors du chargement de l'évolution: {str(e)}",
+            'details': error_details
+        }), 500
+
 @projets_bp.route('/projet-chart/<int:projet_id>')
+@login_required
 def projet_chart(projet_id):
     """Route pour servir le graphique d'un projet spécifique (cherche le traitement le plus récent avec graphique)"""
     projet = Projet.query.get_or_404(projet_id)
+    
+    # Vérifier les permissions : seul le propriétaire ou l'admin peut voir le graphique
+    if not current_user.is_admin() and projet.user_id != current_user.id:
+        return jsonify({'error': 'Accès non autorisé à ce projet'}), 403
     
     if not projet.emplacement_archive:
         return jsonify({'error': 'Archive introuvable'}), 404
@@ -351,12 +450,19 @@ def projet_chart(projet_id):
     return send_file(chart_path, mimetype='image/png')
 
 @projets_bp.route('/treatment-chart/<int:treatment_id>')
+@login_required
 def treatment_chart(treatment_id):
     """Route pour servir le graphique d'un traitement spécifique"""
     from app.models.fichier_genere import FichierGenere
     
     try:
         treatment = FichierGenere.query.get_or_404(treatment_id)
+        
+        # Vérifier les permissions via le projet parent
+        projet = treatment.projet
+        if projet and not current_user.is_admin() and projet.user_id != current_user.id:
+            return jsonify({'error': 'Accès non autorisé à ce traitement'}), 403
+        
         print(f"DEBUG: Treatment found - ID: {treatment_id}, nom_fichier_graphe: {treatment.nom_fichier_graphe}")
         print(f"DEBUG: Treatment chemin_archive: {treatment.chemin_archive}")
         
@@ -422,9 +528,15 @@ def treatment_chart(treatment_id):
         return jsonify({'error': f'Erreur: {str(e)}'}), 500
 
 @projets_bp.route('/download-project-zip/<int:projet_id>')
+@login_required
 def download_project_zip(projet_id):
     """Route pour télécharger tout le contenu d'un projet spécifique en ZIP"""
     projet = Projet.query.get_or_404(projet_id)
+    
+    # Vérifier les permissions : seul le propriétaire ou l'admin peut télécharger
+    if not current_user.is_admin() and projet.user_id != current_user.id:
+        flash("Accès non autorisé à ce projet", "error")
+        return redirect(url_for('projets.dashboard'))
     
     if not projet.emplacement_archive:
         flash("Dossier d'archive introuvable", "error")
@@ -497,12 +609,18 @@ def download_project_zip(projet_id):
                 pass
 
 @projets_bp.route('/download-treatment-zip/<int:treatment_id>')
+@login_required
 def download_treatment_zip(treatment_id):
     """Route pour télécharger les fichiers d'un traitement spécifique en ZIP"""
     from app.models.fichier_genere import FichierGenere
     
     treatment = FichierGenere.query.get_or_404(treatment_id)
     projet = treatment.projet
+    
+    # Vérifier les permissions via le projet parent
+    if projet and not current_user.is_admin() and projet.user_id != current_user.id:
+        flash("Accès non autorisé à ce traitement", "error")
+        return redirect(url_for('projets.dashboard'))
     
     if not treatment.chemin_archive:
         flash("Dossier de traitement introuvable", "error")
@@ -612,9 +730,15 @@ def download_treatment_zip(treatment_id):
                 pass
 
 @projets_bp.route('/download-report-file/<int:projet_id>/<filename>')
+@login_required
 def download_report_file(projet_id, filename):
     """Route pour télécharger un fichier de rapport spécifique"""
     projet = Projet.query.get_or_404(projet_id)
+    
+    # Vérifier les permissions : seul le propriétaire ou l'admin peut télécharger
+    if not current_user.is_admin() and projet.user_id != current_user.id:
+        flash("Accès non autorisé à ce projet", "error")
+        return redirect(url_for('projets.dashboard'))
     
     if not projet.emplacement_archive:
         flash("Dossier d'archive introuvable", "error")
@@ -647,11 +771,18 @@ def download_report_file(projet_id, filename):
     return send_file(file_path, as_attachment=True, download_name=filename)
 
 @projets_bp.route('/download-treatment-file/<int:treatment_id>/<file_type>')
+@login_required
 def download_treatment_file(treatment_id, file_type):
     """Route pour télécharger un fichier spécifique d'un traitement (excel, pdf, chart)"""
     from app.models.fichier_genere import FichierGenere
     
     treatment = FichierGenere.query.get_or_404(treatment_id)
+    
+    # Vérifier les permissions via le projet parent
+    projet = treatment.projet
+    if projet and not current_user.is_admin() and projet.user_id != current_user.id:
+        flash("Accès non autorisé à ce traitement", "error")
+        return redirect(url_for('projets.dashboard'))
     
     if not treatment.chemin_archive:
         flash("Dossier de traitement introuvable", "error")

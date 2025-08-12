@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des réinitialisations - DataAlign{% endblock %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 text-center border-b-2 border-red-500 pb-4">
+                🔐 Gestion des Réinitialisations de Mot de Passe
+            </h1>
+            <p class="text-center text-gray-600 mt-2">
+                Vue d'ensemble des demandes de réinitialisation actives
+            </p>
+        </div>
+
+        <!-- Active Reset Tokens -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                🕐 Tokens de réinitialisation actifs
+            </h2>
+            
+            {% if active_tokens %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Utilisateur
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Email
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Token
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Expire le
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Statut
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for user in active_tokens %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ user.username }}</div>
+                                    <div class="text-sm text-gray-500">{{ user.full_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ user.email }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <code class="text-xs bg-gray-100 px-2 py-1 rounded">
+                                        {{ user.reset_token[:10] }}...
+                                    </code>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ user.reset_token_expires.strftime('%d/%m/%Y %H:%M') if user.reset_token_expires }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% set now = moment() %}
+                                    {% if user.reset_token_expires and user.reset_token_expires > now %}
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                            Valide
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                            Expiré
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <form method="POST" action="{{ url_for('auth.admin_revoke_reset_token', user_id=user.id) }}" class="inline">
+                                        <button type="submit" 
+                                                onclick="return confirm('Êtes-vous sûr de vouloir révoquer ce token ?')"
+                                                class="text-red-600 hover:text-red-900">
+                                            Révoquer
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-8">
+                    <p class="text-gray-500">Aucun token de réinitialisation actif</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-600">{{ stats.total_users }}</div>
+                    <div class="text-sm text-gray-600">Utilisateurs totaux</div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-green-600">{{ stats.active_tokens }}</div>
+                    <div class="text-sm text-gray-600">Tokens actifs</div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-red-600">{{ stats.expired_tokens }}</div>
+                    <div class="text-sm text-gray-600">Tokens expirés</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="bg-white rounded-lg shadow-md p-6 mt-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                ⚙️ Actions administrateur
+            </h2>
+            
+            <div class="flex flex-wrap gap-4">
+                <form method="POST" action="{{ url_for('auth.admin_cleanup_expired_tokens') }}" class="inline">
+                    <button type="submit" 
+                            onclick="return confirm('Nettoyer tous les tokens expirés ?')"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md">
+                        🧹 Nettoyer les tokens expirés
+                    </button>
+                </form>
+                
+                <form method="POST" action="{{ url_for('auth.admin_revoke_all_tokens') }}" class="inline">
+                    <button type="submit" 
+                            onclick="return confirm('⚠️ ATTENTION: Cela va révoquer TOUS les tokens actifs. Continuer ?')"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md">
+                        🚫 Révoquer tous les tokens
+                    </button>
+                </form>
+                
+                <a href="{{ url_for('projets.dashboard') }}" 
+                   class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md">
+                    ← Retour au dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh every 30 seconds
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

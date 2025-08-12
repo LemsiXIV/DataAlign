@@ -13,10 +13,18 @@ def add_password_reset_fields():
     
     with app.app_context():
         try:
-            # Vérifier si les colonnes existent déjà
+            # Vérifier si les colonnes existent déjà (compatible MySQL/MariaDB)
             with db.engine.connect() as connection:
-                result = connection.execute(text("PRAGMA table_info(users)"))
-                columns = [row[1] for row in result]
+                # Utiliser DESCRIBE au lieu de PRAGMA pour MySQL/MariaDB
+                try:
+                    result = connection.execute(text("DESCRIBE users"))
+                    columns = [row[0] for row in result]
+                except:
+                    # Fallback pour SQLite
+                    result = connection.execute(text("PRAGMA table_info(users)"))
+                    columns = [row[1] for row in result]
+                
+                print(f"Colonnes existantes dans la table users: {columns}")
                 
                 if 'reset_token' not in columns:
                     print("Ajout de la colonne reset_token...")

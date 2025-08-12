@@ -2,7 +2,29 @@
 
 DataAlign est une application web Flask conçue pour automatiser les processus de Data Reconciliation Control (DRC). Cette plateforme permet de comparer, analyser et traiter des fichiers de données avec génération de rapports détaillés.
 
+## ⚡ Démarrage Rapide
+
+```bash
+# Installation et configuration
+pip install -r requirements.txt
+python maintenance.py
+python create_initial_users.py
+
+# Démarrage de l'application
+python start_without_migrations.py
+```
+
+**🌐 Application : http://127.0.0.1:5000**
+**👤 Admin : testVikinn / admin123**
+**🔐 Reset de mot de passe disponible**
+
 ## 🚀 Fonctionnalités
+
+### 🔐 Authentification et Sécurité
+- **Système de réinitialisation de mot de passe** : Tokens sécurisés avec expiration automatique
+- **Contrôle d'accès utilisateur** : Utilisateurs voient uniquement leurs projets
+- **Panel d'administration** : Gestion des tokens et utilisateurs
+- **Interface responsive** : Indicateurs visuels du contexte utilisateur
 
 ### Gestion des Projets
 - **Création de projets** : Interface intuitive pour créer et configurer de nouveaux projets de traitement
@@ -55,8 +77,12 @@ DataAlign est une application web Flask conçue pour automatiser les processus d
 
 ### Mode Développement
 ```bash
+# Option 1 : Script personnalisé (Recommandé)
+python start_without_migrations.py
+
+# Option 2 : Méthode traditionnelle
 set FLASK_ENV=development
-set AUTO_MIGRATION=true
+set AUTO_MIGRATION=false
 python run.py
 ```
 
@@ -66,6 +92,18 @@ set FLASK_ENV=production
 set AUTO_MIGRATION=false
 python run.py
 ```
+
+### ⚠️ Problème de Migrations
+En cas de problème avec les migrations automatiques :
+```bash
+python bypass_migrations.py    # Contournement
+python maintenance.py          # Maintenance complète
+```
+
+## 📚 Documentation Complète
+
+- **[README_PASSWORD_RESET.md](README_PASSWORD_RESET.md)** - Documentation complète du système de réinitialisation
+- **[PASSWORD_RESET_SYSTEM.md](PASSWORD_RESET_SYSTEM.md)** - Guide technique détaillé
 
 ## 📁 Structure du Projet
 
@@ -146,6 +184,43 @@ L'application collecte et affiche :
 ### Logs
 - Les logs d'application sont disponibles dans l'interface web
 - Nettoyage automatique des anciens logs
+
+## 📚 Documentation Complète
+
+### 📋 Index Documentation
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - 📚 Index complet de toute la documentation
+- **[README_PASSWORD_RESET.md](README_PASSWORD_RESET.md)** - 🔐 Documentation système de réinitialisation
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - 🚀 Guide de déploiement production
+
+### 🚀 Déploiement Ultra-Rapide
+```bash
+# Installation automatisée complète
+python deploy.py
+
+# Ou étape par étape :
+python disable_migrations.py
+python bypass_migrations.py  
+python maintenance.py
+python start_production.py
+```
+
+### 📖 Documentation par Sujet
+| Sujet | Fichier | Description |
+|-------|---------|-------------|
+| **Vue d'ensemble** | `README.md` | Guide principal et démarrage rapide |
+| **Reset Password** | `README_PASSWORD_RESET.md` | Documentation complète du système |
+| **Déploiement** | `DEPLOYMENT_GUIDE.md` | Production, sécurité, monitoring |
+| **Index complet** | `DOCUMENTATION_INDEX.md` | Navigation dans toute la doc |
+
+La documentation couvre :
+- ✅ Installation et configuration
+- ✅ Utilisation du système de reset
+- ✅ Administration et gestion tokens
+- ✅ Scripts de maintenance et bypass
+- ✅ Déploiement production avec sécurité
+- ✅ Monitoring et surveillance
+- ✅ Résolution de problèmes complets
+- ✅ Guides de mise à jour et maintenance
 
 ## 🤝 Contribution
 

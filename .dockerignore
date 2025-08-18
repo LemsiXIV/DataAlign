@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# DataAlign specific
+uploads/*/
+temp/*.json
+logs/*.log
+backups/
+*.db
+*.sqlite
+*.sqlite3
+
+# Development files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+DEPLOYMENT_GUIDE.md
+DOCUMENTATION_INDEX.md
+README_PASSWORD_RESET.md
+COMMANDS_GUIDE.md
+RECAP_COMPLET.md
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Migration versions (we use bypass scripts)
+migrations/versions/*.py
+
+# Large files that should be mounted as volumes
+uploads/archive/*
+uploads/source/*

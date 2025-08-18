@@ -1,53 +1,45 @@
-# DataAlign - Automatisation DRC
+# 📁 DataAlign v2.0
 
-DataAlign est une application web Flask conçue pour automatiser les processus de Data Reconciliation Control (DRC). Cette plateforme permet de comparer, analyser et traiter des fichiers de données avec génération de rapports détaillés.
+> **⚡ Voir [README_KICKSTART.md](README_KICKSTART.md) pour le guide complet de démarrage !**
 
-## ⚡ Démarrage Rapide
+## 🚀 Démarrage Ultra-Rapide
 
+### Option 1 : Docker (Recommandé)
 ```bash
-# Installation et configuration
-pip install -r requirements.txt
-python maintenance.py
-python create_initial_users.py
-
-# Démarrage de l'application
-python start_without_migrations.py
+python docker_start.py
+# Puis : http://localhost:5000
+# Login : testVikinn / admin123
 ```
 
-**🌐 Application : http://127.0.0.1:5000**
-**👤 Admin : testVikinn / admin123**
-**🔐 Reset de mot de passe disponible**
+### Option 2 : Installation Classique
+```bash
+python deploy.py
+python start_production.py
+```
 
-## 🚀 Fonctionnalités
+## ✨ Fonctionnalités v2.0
+- 🔐 **Système de réinitialisation de mot de passe complet**
+- 👤 **Contrôle d'accès par utilisateur** (projets privés + admin global)  
+- 🐳 **Containerisation Docker** avec CI/CD GitLab
+- 📱 **Interface moderne responsive**
+- 🛡️ **Sécurité renforcée** avec tokens expirables
 
-### 🔐 Authentification et Sécurité
-- **Système de réinitialisation de mot de passe** : Tokens sécurisés avec expiration automatique
-- **Contrôle d'accès utilisateur** : Utilisateurs voient uniquement leurs projets
-- **Panel d'administration** : Gestion des tokens et utilisateurs
-- **Interface responsive** : Indicateurs visuels du contexte utilisateur
+## 👥 Comptes de Test
+- **Admin** : testVikinn / admin123 (accès global + gestion tokens)
+- **User** : testuser / test123 (projets personnels uniquement)
 
-### Gestion des Projets
-- **Création de projets** : Interface intuitive pour créer et configurer de nouveaux projets de traitement
-- **Tableau de bord** : Vue d'ensemble des projets avec métriques et statistiques
-- **Gestion des utilisateurs** : Système d'authentification avec contrôle d'accès basé sur les rôles
+## 📚 Documentation
+**📖 [README_KICKSTART.md](README_KICKSTART.md) - Guide complet avec :**
+- Installation et configuration détaillée
+- Scripts de maintenance automatisés  
+- Configuration Docker et CI/CD
+- Tests et résolution de problèmes
+- Déploiement production
+- Interface utilisateur et fonctionnalités
 
-### Traitement des Données
-- **Comparaison de fichiers** : Analyse comparative entre fichiers sources et cibles
-- **Support multi-formats** : Compatible avec CSV, Excel et autres formats de données
-- **Détection d'écarts** : Identification automatique des différences entre les datasets
+---
 
-### Visualisation et Rapports
-- **Graphiques d'évolution** : Visualisation des écarts dans le temps avec Chart.js
-- **Rapports PDF** : Génération automatique de rapports détaillés
-- **Export Excel** : Extraction des données analysées au format Excel
-- **Statistiques en temps réel** : Métriques de performance et d'écarts
-
-### Sécurité et Permissions
-- **Authentification utilisateur** : Système de connexion sécurisé
-- **Contrôle d'accès** : Les utilisateurs voient uniquement leurs projets, les admins ont accès à tout
-- **Audit des modifications** : Historique des migrations et modifications
-
-## 📋 Prérequis
+*🎯 Pour tout ce dont vous avez besoin : [README_KICKSTART.md](README_KICKSTART.md)*
 
 - Python 3.8+
 - Flask

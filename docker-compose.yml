@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # Application DataAlign
+  dataalign:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - DEBUG=True
+      - DATABASE_URL=mysql://dataalign:dataalign123@mysql:3306/dataalign_dev
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - MAIL_SERVER=localhost
+      - MAIL_PORT=1025
+      - MAIL_USE_TLS=False
+      - MAIL_USERNAME=""
+      - MAIL_PASSWORD=""
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./backups:/app/backups
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - dataalign-network
+
+  # Base de données MySQL pour développement
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: dataalign_dev
+      MYSQL_USER: dataalign
+      MYSQL_PASSWORD: dataalign123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dataalign-network
+
+  # MailHog pour tester les emails en développement
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web interface
+    restart: unless-stopped
+    networks:
+      - dataalign-network
+
+  # Redis pour cache (optionnel)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - dataalign-network
+
+  # Adminer pour gérer la base de données via web
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    networks:
+      - dataalign-network
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  dataalign-network:
+    driver: bridge

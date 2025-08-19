@@ -92,12 +92,12 @@ deploy_staging:
   script:
     - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging..."
     - echo "Creating staging docker-compose configuration..."
-    - echo "version: '3.8'" > docker-compose.staging.yml
+    - echo "version: 3.8" > docker-compose.staging.yml
     - echo "services:" >> docker-compose.staging.yml
     - echo "  dataalign:" >> docker-compose.staging.yml
     - echo "    image: $DOCKER_IMAGE:$CI_COMMIT_SHA" >> docker-compose.staging.yml
     - echo "    ports:" >> docker-compose.staging.yml
-    - echo "      - \"5000:5000\"" >> docker-compose.staging.yml
+    - echo "      - 5000:5000" >> docker-compose.staging.yml
     - echo "    environment:" >> docker-compose.staging.yml
     - echo "      - FLASK_ENV=staging" >> docker-compose.staging.yml
     - echo "      - DATABASE_URL=sqlite:///dataalign_staging.db" >> docker-compose.staging.yml
@@ -125,12 +125,12 @@ deploy_production:
     - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to production..."
     - echo "Creating backup before deployment..."
     - echo "Creating production docker-compose configuration..."
-    - echo "version: '3.8'" > docker-compose.prod.yml
+    - echo "version: 3.8" > docker-compose.prod.yml
     - echo "services:" >> docker-compose.prod.yml
     - echo "  dataalign:" >> docker-compose.prod.yml
     - echo "    image: $DOCKER_IMAGE:$CI_COMMIT_SHA" >> docker-compose.prod.yml
     - echo "    ports:" >> docker-compose.prod.yml
-    - echo "      - \"5000:5000\"" >> docker-compose.prod.yml
+    - echo "      - 5000:5000" >> docker-compose.prod.yml
     - echo "    environment:" >> docker-compose.prod.yml
     - echo "      - FLASK_ENV=production" >> docker-compose.prod.yml
     - echo "    restart: unless-stopped" >> docker-compose.prod.yml

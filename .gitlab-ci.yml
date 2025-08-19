@@ -6,6 +6,9 @@ stages:
 variables:
   DOCKER_IMAGE: registry.gitlab.tech.orange/win/owf/pegase-opfr-pgz/dataalign/dataalign_pro
   DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_VERIFY: 1
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 # Cache pour optimiser les builds
@@ -27,9 +30,12 @@ build:
     - docker:24-dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
   before_script:
-    - docker info
+    - until docker info; do echo "Waiting for docker daemon..."; sleep 1; done
     - echo "Building DataAlign v2.0 with Password Reset System"
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
     - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
@@ -87,29 +93,37 @@ deploy_staging:
     - docker:24-dind
   variables:
     DEPLOY_ENV: staging
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
   before_script:
+    - until docker info; do echo "Waiting for docker daemon..."; sleep 1; done
     - echo "Deploying DataAlign to staging environment"
   script:
     - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging..."
-    - echo "Creating staging docker-compose configuration..."
-    - echo "version: 3.8" > docker-compose.staging.yml
-    - echo "services:" >> docker-compose.staging.yml
-    - echo "  dataalign:" >> docker-compose.staging.yml
-    - echo "    image: $DOCKER_IMAGE:$CI_COMMIT_SHA" >> docker-compose.staging.yml
-    - echo "    ports:" >> docker-compose.staging.yml
-    - echo "      - 5000:5000" >> docker-compose.staging.yml
-    - echo "    environment:" >> docker-compose.staging.yml
-    - echo "      - FLASK_ENV=staging" >> docker-compose.staging.yml
-    - echo "      - DATABASE_URL=sqlite:///dataalign_staging.db" >> docker-compose.staging.yml
-    - echo "    restart: unless-stopped" >> docker-compose.staging.yml
-    - echo "Staging deployment completed"
-    - echo "Application should be available at: http://your-staging-domain.com"
+    - |
+      cat <<EOF > docker-compose.staging.yml
+      version: "3.8"
+      services:
+        dataalign:
+          image: $DOCKER_IMAGE:$CI_COMMIT_SHA
+          ports:
+            - "5000:5000"
+          environment:
+            - FLASK_ENV=staging
+            - DATABASE_URL=sqlite:///dataalign_staging.db
+          restart: unless-stopped
+      EOF
+    - |
+      echo "Staging deployment completed"
+      echo "Application should be available at: http://your-staging-domain.com"
   environment:
     name: staging
     url: http://your-staging-domain.com
   only:
     - DataAlign_pro
   when: manual
+
 
 deploy_production:
   stage: deploy
@@ -118,25 +132,32 @@ deploy_production:
     - docker:24-dind
   variables:
     DEPLOY_ENV: production
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
   before_script:
+    - until docker info; do echo "Waiting for docker daemon..."; sleep 1; done
     - echo "Deploying DataAlign to PRODUCTION environment"
     - echo "Production deployment requires manual approval"
   script:
     - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to production..."
     - echo "Creating backup before deployment..."
-    - echo "Creating production docker-compose configuration..."
-    - echo "version: 3.8" > docker-compose.prod.yml
-    - echo "services:" >> docker-compose.prod.yml
-    - echo "  dataalign:" >> docker-compose.prod.yml
-    - echo "    image: $DOCKER_IMAGE:$CI_COMMIT_SHA" >> docker-compose.prod.yml
-    - echo "    ports:" >> docker-compose.prod.yml
-    - echo "      - 5000:5000" >> docker-compose.prod.yml
-    - echo "    environment:" >> docker-compose.prod.yml
-    - echo "      - FLASK_ENV=production" >> docker-compose.prod.yml
-    - echo "    restart: unless-stopped" >> docker-compose.prod.yml
-    - echo "Production deployment completed"
-    - echo "Application available at: https://your-production-domain.com"
-    - echo "Admin panel: https://your-production-domain.com/auth/admin/reset-tokens"
+    - |
+      cat <<EOF > docker-compose.prod.yml
+      version: "3.8"
+      services:
+        dataalign:
+          image: $DOCKER_IMAGE:$CI_COMMIT_SHA
+          ports:
+            - "5000:5000"
+          environment:
+            - FLASK_ENV=production
+          restart: unless-stopped
+      EOF
+    - |
+      echo "Production deployment completed"
+      echo "Application available at: https://your-production-domain.com"
+      echo "Admin panel: https://your-production-domain.com/auth/admin/reset-tokens"
   environment:
     name: production
     url: https://your-production-domain.com
@@ -144,12 +165,19 @@ deploy_production:
     - DataAlign_pro
   when: manual
 
+
 # Job de nettoyage des images Docker anciennes
 cleanup:
   stage: deploy
   image: docker:24-cli
   services:
     - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+  before_script:
+    - until docker info; do echo "Waiting for docker daemon..."; sleep 1; done
   script:
     - echo "Cleaning up old Docker images..."
     - docker image prune -f

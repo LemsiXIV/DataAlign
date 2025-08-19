@@ -31,18 +31,9 @@ build:
     - docker info
     - echo "Building DataAlign v2.0 with Password Reset System"
   script:
-    # Build avec optimisations pour DataAlign
-    - docker build 
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        --cache-from $DOCKER_IMAGE:latest
-        -t $DOCKER_IMAGE:$CI_COMMIT_SHA 
-        -t $DOCKER_IMAGE:latest .
-    
-    # Push les deux tags
+    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
     - docker push $DOCKER_IMAGE:latest
-    
-    # Test rapide du container
     - docker run --rm --name dataalign-test -d -p 5000:5000 $DOCKER_IMAGE:$CI_COMMIT_SHA
     - sleep 15
     - docker exec dataalign-test python -c "from app import create_app; print('✅ App can be created')"
@@ -86,22 +77,7 @@ test:
     
     # Run pytest if tests exist
     - if [ -d "tests" ]; then pytest --cov=app --cov-report=xml; else echo "📝 No test directory found - creating basic test structure"; fi
-    
-        # Test database connection
-    - |
-      python - <<'EOF'
-      import os
-      from app import create_app
-      from app.models import db
-
-      app = create_app()
-      with app.app_context():
-          try:
-              db.create_all()
-              print("✅ Database connection and creation works")
-          except Exception as e:
-              print(f"⚠️ Database test failed: {e}")
-      EOF
+    - python -c "from app import create_app; from app.models import db; app = create_app(); app.app_context().push(); db.create_all(); print('✅ Database connection works')"
   artifacts:
     paths:
       - coverage.xml
@@ -122,41 +98,18 @@ deploy_staging:
   before_script:
     - echo "🚀 Deploying DataAlign to staging environment"
   script:
-    # Exemple de déploiement staging
     - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to staging..."
-    
-    # Simulation déploiement - adaptez selon votre infrastructure
-    - |
-      cat << EOF > docker-compose.staging.yml
-      version: '3.8'
-      services:
-        dataalign:
-          image: $DOCKER_IMAGE:$CI_COMMIT_SHA
-          ports:
-            - "5000:5000"
-          environment:
-            - FLASK_ENV=staging
-            - DATABASE_URL=sqlite:///dataalign_staging.db
-            - SECRET_KEY=\${SECRET_KEY}
-          volumes:
-            - dataalign_staging_data:/app/uploads
-            - dataalign_staging_logs:/app/logs
-          restart: unless-stopped
-          healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:5000/"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-        
-      volumes:
-        dataalign_staging_data:
-        dataalign_staging_logs:
-      EOF
-    
-    # Deploy commands (adaptez selon votre infrastructure)
-    # - docker-compose -f docker-compose.staging.yml up -d
-    # - docker-compose -f docker-compose.staging.yml exec dataalign python bypass_migrations.py
-    
+    - echo "Creating staging docker-compose configuration..."
+    - echo "version: '3.8'" > docker-compose.staging.yml
+    - echo "services:" >> docker-compose.staging.yml
+    - echo "  dataalign:" >> docker-compose.staging.yml
+    - echo "    image: $DOCKER_IMAGE:$CI_COMMIT_SHA" >> docker-compose.staging.yml
+    - echo "    ports:" >> docker-compose.staging.yml
+    - echo "      - \"5000:5000\"" >> docker-compose.staging.yml
+    - echo "    environment:" >> docker-compose.staging.yml
+    - echo "      - FLASK_ENV=staging" >> docker-compose.staging.yml
+    - echo "      - DATABASE_URL=sqlite:///dataalign_staging.db" >> docker-compose.staging.yml
+    - echo "    restart: unless-stopped" >> docker-compose.staging.yml
     - echo "✅ Staging deployment completed"
     - echo "🌐 Application should be available at: http://your-staging-domain.com"
   environment:
@@ -177,67 +130,18 @@ deploy_production:
     - echo "🚀 Deploying DataAlign to PRODUCTION environment"
     - echo "⚠️ Production deployment requires manual approval"
   script:
-    # Production deployment
     - echo "Deploying $DOCKER_IMAGE:$CI_COMMIT_SHA to production..."
-    
-    # Backup avant déploiement
     - echo "📦 Creating backup before deployment..."
-    
-    # Production docker-compose
-    - |
-      cat << EOF > docker-compose.prod.yml
-      version: '3.8'
-      services:
-        dataalign:
-          image: $DOCKER_IMAGE:$CI_COMMIT_SHA
-          ports:
-            - "5000:5000"
-          environment:
-            - FLASK_ENV=production
-            - DATABASE_URL=\${DATABASE_URL}
-            - SECRET_KEY=\${SECRET_KEY}
-            - MAIL_SERVER=\${MAIL_SERVER}
-            - MAIL_USERNAME=\${MAIL_USERNAME}
-            - MAIL_PASSWORD=\${MAIL_PASSWORD}
-          volumes:
-            - dataalign_prod_data:/app/uploads
-            - dataalign_prod_logs:/app/logs
-            - dataalign_prod_backups:/app/backups
-          restart: unless-stopped
-          healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:5000/"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-          deploy:
-            resources:
-              limits:
-                memory: 1G
-                cpus: '0.5'
-        
-        nginx:
-          image: nginx:alpine
-          ports:
-            - "80:80"
-            - "443:443"
-          volumes:
-            - ./nginx.conf:/etc/nginx/nginx.conf
-            - ./ssl:/etc/nginx/ssl
-          depends_on:
-            - dataalign
-          restart: unless-stopped
-        
-      volumes:
-        dataalign_prod_data:
-        dataalign_prod_logs:
-        dataalign_prod_backups:
-      EOF
-    
-    # Deploy commands (adaptez selon votre infrastructure)
-    # - docker-compose -f docker-compose.prod.yml up -d
-    # - docker-compose -f docker-compose.prod.yml exec dataalign python bypass_migrations.py
-    # - docker-compose -f docker-compose.prod.yml exec dataalign python maintenance.py
-    
+    - echo "Creating production docker-compose configuration..."
+    - echo "version: '3.8'" > docker-compose.prod.yml
+    - echo "services:" >> docker-compose.prod.yml
+    - echo "  dataalign:" >> docker-compose.prod.yml
+    - echo "    image: $DOCKER_IMAGE:$CI_COMMIT_SHA" >> docker-compose.prod.yml
+    - echo "    ports:" >> docker-compose.prod.yml
+    - echo "      - \"5000:5000\"" >> docker-compose.prod.yml
+    - echo "    environment:" >> docker-compose.prod.yml
+    - echo "      - FLASK_ENV=production" >> docker-compose.prod.yml
+    - echo "    restart: unless-stopped" >> docker-compose.prod.yml
     - echo "✅ Production deployment completed"
     - echo "🌐 Application available at: https://your-production-domain.com"
     - echo "🔐 Admin panel: https://your-production-domain.com/auth/admin/reset-tokens"

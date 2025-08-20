@@ -4,12 +4,12 @@ stages:
   - deploy
 
 variables:
-  DOCKER_IMAGE: registry.gitlab.tech.orange/win/owf/pegase-opfr-pgz/dataalign/dataalign_pro
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "/certs"
-  DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_VERIFY: 1
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  #DOCKER_IMAGE: registry.gitlab.tech.orange/win/owf/pegase-opfr-pgz/dataalign/dataalign_pro
+  #DOCKER_DRIVER: overlay2
+  #DOCKER_TLS_CERTDIR: "/certs"
+  #DOCKER_HOST: tcp://docker:2376
+  #DOCKER_TLS_VERIFY: 1
+  #PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   DOCKER_DOCKERFILE_PATH: Dockerfile
   DOCKER_CONTEXT_PATH: $CI_PROJECT_DIR
   DOCKER_CONTAINER_IMAGE: ${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}:${CI_COMMIT_SHORT_SHA}

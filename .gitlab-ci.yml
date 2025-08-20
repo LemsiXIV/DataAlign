@@ -39,7 +39,7 @@ cache:
 # Stage 1: Build Docker Image
 build:
   stage: build
-  extands: .dind
+  extends: .dinds
   script:
     - |
       docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"

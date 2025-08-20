@@ -22,9 +22,6 @@ cache:
     - .cache/pip
     - node_modules/
 
-before_script:
-  - python3 --version
-  - pip install --upgrade pip
 
 # Stage 1: Build Docker Image
 build:
@@ -47,7 +44,7 @@ build:
     - develop
   tags:    
     - graas-dind
-    
+
 # Stage 2: Run Tests
 test:
   stage: test

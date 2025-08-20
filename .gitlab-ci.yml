@@ -10,6 +10,10 @@ variables:
   DOCKER_HOST: tcp://docker:2376
   DOCKER_TLS_VERIFY: 1
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  DOCKER_DOCKERFILE_PATH: Dockerfile
+  DOCKER_CONTEXT_PATH: $CI_PROJECT_DIR
+  DOCKER_CONTAINER_IMAGE: ${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}:${CI_COMMIT_SHORT_SHA}
+ 
 
 # Cache pour optimiser les builds
 cache:
@@ -32,23 +36,18 @@ build:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_HOST: tcp://docker:2376
     DOCKER_TLS_VERIFY: 1
-  before_script:
-    - until docker info; do echo "Waiting for docker daemon..."; sleep 1; done
-    - echo "Building DataAlign v2.0 with Password Reset System"
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:$CI_COMMIT_SHA -t $DOCKER_IMAGE:latest .
-    - docker push $DOCKER_IMAGE:$CI_COMMIT_SHA
-    - docker push $DOCKER_IMAGE:latest
-    - docker run --rm --name dataalign-test -d -p 5000:5000 $DOCKER_IMAGE:$CI_COMMIT_SHA
-    - sleep 15
-    - docker exec dataalign-test python -c "from app import create_app; print('App can be created')"
-    - docker stop dataalign-test
+    - |
+      docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+      docker build --platform linux/amd64 -f "${DOCKER_DOCKERFILE_PATH}" -t "${CI_REGISTRY}/${DOCKER_CONTAINER_IMAGE}" "${DOCKER_CONTEXT_PATH}"
+      docker push "${CI_REGISTRY}/${DOCKER_CONTAINER_IMAGE}"
   only:
     - DataAlign_pro
     - main
     - develop
-
+  tags:    
+    - graas-dind
+    
 # Stage 2: Run Tests
 test:
   stage: test

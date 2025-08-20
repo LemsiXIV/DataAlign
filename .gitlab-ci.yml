@@ -42,7 +42,7 @@ build:
 # Stage 2: Run Tests
 test:
   stage: test
-  image: python:3.13-slim
+  image: python:3.13.0-slim
   services:
     - name: mysql:8.0
       alias: mysql

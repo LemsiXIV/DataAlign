@@ -1,5 +1,5 @@
 # Use Python 3.13 image
-FROM dockerproxy.repos.tech.orange/python/python:3.13.0-slim
+FROM dockerproxy.repos.tech.orange/python:3.13.0-slim
 
 # Set working directory
 WORKDIR /app

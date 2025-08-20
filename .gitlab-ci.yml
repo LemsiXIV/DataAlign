@@ -22,17 +22,24 @@ cache:
     - .cache/pip
     - node_modules/
 
+.dind:
+  tags:
+    - graas-dind
+  image: docker:24-cli
+  services:
+    - name: docker:24-dind
+      command:
+        - --insecure-registry=dockerhubrsc.si.francetelecom.fr:443
+        - --insecure-registry=dockerhub1.itn.ftgroup
+        - --insecure-registry=dockerhub2.itn.ftgroup
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""  
 
 # Stage 1: Build Docker Image
 build:
   stage: build
-  image: docker:24-cli
-  services:
-    - docker:24-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
+  extands: .dind
   script:
     - |
       docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
@@ -42,8 +49,7 @@ build:
     - DataAlign_pro
     - main
     - develop
-  tags:    
-    - graas-dind
+
 
 # Stage 2: Run Tests
 test:

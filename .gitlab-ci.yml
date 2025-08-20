@@ -15,13 +15,6 @@ variables:
   DOCKER_CONTAINER_IMAGE: ${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}:${CI_COMMIT_SHORT_SHA}
  
 
-# Cache pour optimiser les builds
-cache:
-  key: "${CI_COMMIT_REF_SLUG}"
-  paths:
-    - .cache/pip
-    - node_modules/
-
 .dind:
   tags:
     - graas-dind

@@ -51,23 +51,28 @@ test:
         MYSQL_DATABASE: dataalign_test
         MYSQL_USER: dataalign_test
         MYSQL_PASSWORD: test_password
+      command: ["--default-authentication-plugin=mysql_native_password", "--skip-ssl", "--bind-address=0.0.0.0"]
   variables:
-    DATABASE_URL: "mysql+pymysql://dataalign_test:test_password@mysql/dataalign_test"
+    DATABASE_URL: "mysql+pymysql://dataalign_test:test_password@mysql/dataalign_test?charset=utf8mb4&ssl_disabled=true"
     FLASK_ENV: testing
     SECRET_KEY: "test-secret-key-for-ci"
   before_script:
-    - apt-get update && apt-get install -y default-libmysqlclient-dev build-essential pkg-config default-mysql-client
+    - apt-get update && apt-get install -y default-libmysqlclient-dev build-essential pkg-config default-mysql-client netcat-openbsd
     - pip install --no-cache-dir -r requirements.txt
     - pip install pytest pytest-cov pytest-flask mysqlclient PyMySQL
     - echo "Waiting for MySQL service to be ready..."
-    - until mysql -h mysql -u dataalign_test -ptest_password -e "SELECT 1"; do echo "MySQL not ready, waiting..."; sleep 2; done
+    - echo "First checking if MySQL port is accessible..."
+    - until nc -z mysql 3306; do echo "MySQL port not ready, waiting..."; sleep 2; done
+    - echo "MySQL port is accessible, now testing authentication..."
+    - until mysql -h mysql -u dataalign_test -ptest_password --ssl-mode=DISABLED -e "SELECT 1"; do echo "MySQL authentication not ready, waiting..."; sleep 2; done
+    - echo "MySQL is fully ready!"
   script:
     - echo "Running DataAlign Tests..."
     - echo "Testing app creation with database connection..."
     - |
       python -c "
       import os
-      os.environ['DATABASE_URL'] = 'mysql+pymysql://dataalign_test:test_password@mysql/dataalign_test'
+      os.environ['DATABASE_URL'] = 'mysql+pymysql://dataalign_test:test_password@mysql/dataalign_test?charset=utf8mb4&ssl_disabled=true'
       from app import create_app
       app = create_app()
       print('✅ App creation works with MySQL connection')

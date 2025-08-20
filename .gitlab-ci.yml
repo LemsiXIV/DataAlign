@@ -25,9 +25,9 @@ cache:
 .dind:
   tags:
     - graas-dind
-  image: docker:24-cli
+  image: dockerproxy.repos.tech.orange/docker:20.10
   services:
-    - name: docker:24-dind
+    - name: docker:20.10-dind
       command:
         - --insecure-registry=dockerhubrsc.si.francetelecom.fr:443
         - --insecure-registry=dockerhub1.itn.ftgroup

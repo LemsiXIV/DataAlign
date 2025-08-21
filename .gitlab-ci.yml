@@ -66,6 +66,13 @@ test:
     - echo "MySQL port is accessible, now testing authentication..."
     - until mysql -h mysql -u dataalign_test -ptest_password -e "SELECT 1"; do echo "MySQL authentication not ready, waiting..."; sleep 2; done
     - echo "MySQL is fully ready!"
+    - echo "Waiting for MySQL..."
+    - until mysql -h mysql -u root -ptest_password -e "SELECT 1"; do sleep 2; done
+    - echo "MySQL is ready!"
+    - echo "Running migrations..."
+    - python -m flask db upgrade || alembic upgrade head
+    - echo "Running tests..."
+    - pytest
   script:
     - echo "Running DataAlign Tests..."
     - echo "Testing app creation with database connection..."
@@ -75,7 +82,7 @@ test:
       os.environ['DATABASE_URL'] = 'mysql+pymysql://dataalign_test:test_password@mysql/dataalign_test?charset=utf8mb4&ssl_disabled=true'
       from app import create_app
       app = create_app()
-      print('✅ App creation works with MySQL connection')
+      print(' App creation works with MySQL connection')
       "
     - python test_password_reset.py || echo "Password reset tests need review"
     - python bypass_migrations.py --test || echo "Migration bypass works"
@@ -89,9 +96,9 @@ test:
       with app.app_context():
           try:
               db.create_all()
-              print('✅ Database connection and table creation works')
+              print(' Database connection and table creation works')
           except Exception as e:
-              print(f'⚠️ Database setup issue: {e}')
+              print(f' Database setup issue: {e}')
               print('Continuing with tests...')
       "
   artifacts:

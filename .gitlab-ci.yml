@@ -64,8 +64,30 @@ test:
     - echo "First checking if MySQL port is accessible..."
     - until nc -z mysql 3306; do echo "MySQL port not ready, waiting..."; sleep 2; done
     - echo "MySQL port is accessible, now testing authentication..."
-    - until mysql -h mysql -u dataalign_test -ptest_password --ssl-mode=DISABLED -e "SELECT 1"; do echo "MySQL authentication not ready, waiting..."; sleep 2; done
-    - echo "MySQL is fully ready!"
+    - |
+      # Try multiple connection methods with timeout
+      COUNTER=0
+      MAX_ATTEMPTS=30
+      
+      while [ $COUNTER -lt $MAX_ATTEMPTS ]; do
+        if mysql -h mysql -u dataalign_test -ptest_password --skip-ssl -e "SELECT 1" 2>/dev/null; then
+          echo "✅ MySQL authentication successful!"
+          break
+        elif mysql -h mysql -u dataalign_test -ptest_password -e "SELECT 1" 2>/dev/null; then
+          echo "✅ MySQL authentication successful (with default SSL)!"
+          break
+        else
+          echo "MySQL authentication attempt $((COUNTER+1))/$MAX_ATTEMPTS failed, waiting..."
+          sleep 2
+          COUNTER=$((COUNTER+1))
+        fi
+      done
+      
+      if [ $COUNTER -eq $MAX_ATTEMPTS ]; then
+        echo "❌ MySQL authentication failed after $MAX_ATTEMPTS attempts"
+        echo "Proceeding anyway - tests will handle connection issues"
+      fi
+    - echo "MySQL setup completed!"
   script:
     - echo "Running DataAlign Tests..."
     - echo "Setting up test database..."

@@ -6,10 +6,24 @@ WORKDIR /app
 
 # Install system dependencies (MySQL client + Node.js for Tailwind/Flowbite build)
 RUN apt-get update && apt-get install -y \
-    default-libmysqlclient-dev build-essential pkg-config curl \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    default-libmysqlclient-dev \
+    build-essential \
+    pkg-config \
+    curl \
+    wget \
+    gnupg2 \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x (more reliable method)
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify Node.js and npm installation
+RUN node --version && npm --version
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash dataalign
@@ -22,16 +36,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY package*.json ./
 RUN npm install --production=false
 
-# Copy project files and set ownership
+# Copy project files
 COPY . .
-RUN chown -R dataalign:dataalign /app
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/uploads/source /app/uploads/archive /app/temp /app/backups \
-    && chown -R dataalign:dataalign /app/logs /app/uploads /app/temp /app/backups
+RUN mkdir -p /app/logs /app/uploads/source /app/uploads/archive /app/temp /app/backups
 
 # Build Tailwind + Flowbite assets
 RUN npx tailwindcss -i ./app/static/src/input.css -o ./app/static/dist/output.css --minify
+
+# Set ownership after all operations
+RUN chown -R dataalign:dataalign /app
 
 # Switch to non-root user
 USER dataalign
@@ -46,5 +61,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
-# Start Flask app with production settings
-CMD ["python", "start_production.py"]
+# Start Flask app
+CMD ["python", "run.py"]

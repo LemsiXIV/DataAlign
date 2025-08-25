@@ -5,6 +5,37 @@ import os
 import time
 import threading
 from datetime import datetime
+import sys
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+
+def wait_for_database(app, max_retries=30, retry_interval=2):
+    """
+    Attend que la base de données soit disponible
+    """
+    print(f"🔌 Vérification de la connexion à la base de données...")
+    
+    for attempt in range(max_retries):
+        try:
+            with app.app_context():
+                # Test simple de connexion
+                db.session.execute(text('SELECT 1'))
+                print(f"✅ Connexion à la base de données établie (tentative {attempt + 1})")
+                return True
+        except OperationalError as e:
+            if attempt < max_retries - 1:
+                print(f"⏳ Tentative {attempt + 1}/{max_retries} échouée: {str(e)[:100]}...")
+                print(f"   Nouvelle tentative dans {retry_interval} secondes...")
+                time.sleep(retry_interval)
+            else:
+                print(f"❌ Impossible de se connecter à la base de données après {max_retries} tentatives")
+                print(f"   Dernière erreur: {e}")
+                return False
+        except Exception as e:
+            print(f"❌ Erreur inattendue lors de la connexion à la DB: {e}")
+            return False
+    
+    return False
 
 def cleanup_temp_files():
     """
@@ -137,18 +168,22 @@ def start_cleanup_timer():
     
     print(f"[{datetime.now()}] Prochain nettoyage programmé dans 5 heures")
 
-# Create Flask app using the app factory
-app = create_app()
-
 if __name__ == '__main__':
     # 1. Récupérer l'environnement (développement, production...)
     env = os.getenv('FLASK_ENV', 'development')
+    print(f"🌍 Environnement: {env}")
 
     # 2. Créer l'app avec la config adaptée
+    print("🏗️ Création de l'application Flask...")
     app = create_app(env)
 
+    # 3. Attendre que la base de données soit prête
+    if not wait_for_database(app):
+        print("❌ Impossible de se connecter à la base de données. Arrêt de l'application.")
+        sys.exit(1)
+
     with app.app_context():
-        # 3. Lancer auto migration seulement si configuré
+        # 4. Lancer auto migration seulement si configuré
         print("🔄 Initialisation des migrations automatiques...")
         try:
             init_auto_migration(app)
@@ -157,17 +192,24 @@ if __name__ == '__main__':
             print(f"❌ Erreur lors des migrations automatiques: {e}")
             print("⚠️ L'application va continuer mais certaines fonctionnalités peuvent ne pas fonctionner")
 
-        # 4. Fallback : créer les tables si besoin (pas idéal en prod)
+        # 5. Fallback : créer les tables si besoin (pas idéal en prod)
         try:
             db.create_all()
             print("✅ Tables de base de données vérifiées")
         except Exception as e:
             print(f"❌ Erreur lors de la création des tables: {e}")
 
-    # 5. Démarrer le nettoyage périodique
+    # 6. Démarrer le nettoyage périodique
     print(f"🧹 Démarrage du service de nettoyage automatique")
     start_cleanup_timer()
 
-    # 6. Démarrer l'app Flask
+    # 7. Démarrer l'app Flask
     print("🚀 Démarrage de l'application DataAlign...")
-    app.run(debug=(env=='development'))
+    print(f"📍 L'application sera accessible sur http://localhost:5000")
+    
+    # Configuration du serveur Flask
+    host = '0.0.0.0'  # Important pour Docker
+    port = int(os.environ.get('PORT', 5000))
+    debug = (env == 'development')
+    
+    app.run(host=host, port=port, debug=debug)

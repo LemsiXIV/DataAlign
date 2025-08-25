@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # MySQL Development Database
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: dev_root_password
+      MYSQL_DATABASE: DataAlign_dev
+      MYSQL_USER: DataAlign
+      MYSQL_PASSWORD: DataAlign
+    ports:
+      - "3307:3306"  # Use 3307 to avoid conflict with local MySQL
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --skip-ssl
+      --bind-address=0.0.0.0
+      --wait_timeout=28800
+      --interactive_timeout=28800
+      --max_connections=200
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdev_root_password"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - dataalign-dev-network
+    restart: unless-stopped
+
+  # DataAlign Application Development
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=development
+      - DEBUG=True
+      - DATABASE_URL=mysql+pymysql://DataAlign:DataAlign@mysql/DataAlign_dev?charset=utf8mb4&ssl_disabled=true
+      - SECRET_KEY=dev-secret-key-12345
+      - AUTO_MIGRATION=false
+      - PORT=5000
+    volumes:
+      - ./uploads:/app/uploads      # Mount local uploads folder
+      - ./logs:/app/logs            # Mount local logs folder
+      - ./temp:/app/temp            # Mount local temp folder
+      # Uncomment next line for hot reload during development
+      # - .:/app                    # Mount source code for hot reload
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - dataalign-dev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # MailHog for email testing (catches all emails)
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - dataalign-dev-network
+    restart: unless-stopped
+
+  # Adminer for database management (optional)
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - dataalign-dev-network
+    restart: unless-stopped
+
+volumes:
+  mysql_dev_data:
+    driver: local
+
+networks:
+  dataalign-dev-network:
+    driver: bridge

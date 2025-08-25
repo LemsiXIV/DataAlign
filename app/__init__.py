@@ -59,6 +59,8 @@ def create_app(config_name=None):
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
     from app.routes.notifications import notifications_bp
+    from app.routes.health import health_bp
+
 
     app.register_blueprint(projets_bp)
     app.register_blueprint(comparaison_bp)
@@ -67,5 +69,6 @@ def create_app(config_name=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(health_bp)
 
     return app

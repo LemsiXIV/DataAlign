@@ -205,11 +205,11 @@ if __name__ == '__main__':
 
     # 7. Démarrer l'app Flask
     print("🚀 Démarrage de l'application DataAlign...")
-    print(f"📍 L'application sera accessible sur http://localhost:5000")
+    print(f"📍 L'application sera accessible sur http://localhost:5004")
     
     # Configuration du serveur Flask
     host = '0.0.0.0'  # Important pour Docker
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5004))
     debug = (env == 'development')
     
     app.run(host=host, port=port, debug=debug)

@@ -46,13 +46,16 @@ def check_docker():
 
 def build_image():
     """Construire l'image Docker"""
-    print("2️⃣ CONSTRUCTION IMAGE DOCKER")
+    print("2️⃣ CONSTRUCTION IMAGE DOCKER DEV")
     print("-" * 40)
     
-    # Build de l'image
+    # Set environment for compatibility
+    run_command("export DOCKER_BUILDKIT=0", "Désactivation BuildKit", critical=False)
+    
+    # Build de l'image avec Dockerfile.dev
     run_command(
-        "docker build -t dataalign:latest .", 
-        "Construction image DataAlign"
+        "docker build -f Dockerfile.dev -t dataalign:latest .", 
+        "Construction image DataAlign DEV"
     )
     
     # Vérifier l'image
@@ -64,34 +67,54 @@ def build_image():
     print("✅ Image Docker construite\n")
 
 def start_development():
-    """Démarrer en mode développement avec docker-compose"""
+    """Démarrer en mode développement avec docker-compose.dev.yml"""
     print("3️⃣ DÉMARRAGE MODE DÉVELOPPEMENT")
     print("-" * 40)
     
-    if not Path("docker-compose.yml").exists():
-        print("❌ Fichier docker-compose.yml non trouvé")
+    if not Path("docker-compose.dev.yml").exists():
+        print("❌ Fichier docker-compose.dev.yml non trouvé")
         return False
+    
+    # Set timeouts for WSL
+    run_command("export COMPOSE_HTTP_TIMEOUT=300", "Configuration timeout", critical=False)
+    run_command("export DOCKER_CLIENT_TIMEOUT=300", "Configuration timeout Docker", critical=False)
     
     # Arrêter les services existants
     run_command(
-        "docker-compose down", 
+        "docker-compose -f docker-compose.dev.yml down -v", 
         "Arrêt services existants", 
         critical=False
     )
     
-    # Démarrer les services
+    # Nettoyer Docker
     run_command(
-        "docker-compose up -d", 
-        "Démarrage services en mode détaché"
+        "docker system prune -f", 
+        "Nettoyage Docker", 
+        critical=False
+    )
+    
+    # Démarrer MySQL d'abord
+    run_command(
+        "docker-compose -f docker-compose.dev.yml up -d mysql", 
+        "Démarrage MySQL"
+    )
+    
+    print("⏳ Attente MySQL (45s)...")
+    time.sleep(45)
+    
+    # Démarrer tous les services
+    run_command(
+        "docker-compose -f docker-compose.dev.yml up -d", 
+        "Démarrage de tous les services"
     )
     
     # Attendre que les services soient prêts
-    print("⏳ Attente démarrage des services (30s)...")
+    print("⏳ Attente démarrage complet (30s)...")
     time.sleep(30)
     
     # Vérifier les services
     run_command(
-        "docker-compose ps", 
+        "docker-compose -f docker-compose.dev.yml ps", 
         "État des services"
     )
     
@@ -103,10 +126,9 @@ def show_info():
     print("-" * 40)
     
     print("🌐 URLS DISPONIBLES:")
-    print("   • Application: http://localhost:5000")
-    print("   • Base de données (Adminer): http://localhost:8080")
-    print("   • Emails (MailHog): http://localhost:8025")
-    print("   • Redis: localhost:6379")
+    print("   • Application: http://localhost:5006")
+    print("   • Base de données (Adminer): http://localhost:8081")
+    print("   • Emails (MailHog): http://localhost:8026")
     
     print("\n👤 COMPTES DE TEST:")
     print("   • Admin: testVikinn / admin123")
@@ -114,19 +136,19 @@ def show_info():
     
     print("\n🗄️ BASE DE DONNÉES (Adminer):")
     print("   • Serveur: mysql")
-    print("   • Utilisateur: dataalign")
-    print("   • Mot de passe: dataalign123")
-    print("   • Base: dataalign_dev")
+    print("   • Utilisateur: DataAlign")
+    print("   • Mot de passe: DataAlign")
+    print("   • Base: DataAlign_dev")
     
     print("\n📧 EMAILS:")
     print("   • Les emails sont capturés par MailHog")
-    print("   • Interface web: http://localhost:8025")
+    print("   • Interface web: http://localhost:8026")
     
     print("\n🔧 COMMANDES UTILES:")
-    print("   • Voir logs: docker-compose logs -f dataalign")
-    print("   • Arrêter: docker-compose down")
-    print("   • Redémarrer: docker-compose restart dataalign")
-    print("   • Shell container: docker-compose exec dataalign bash")
+    print("   • Voir logs: docker-compose -f docker-compose.dev.yml logs -f app")
+    print("   • Arrêter: docker-compose -f docker-compose.dev.yml down")
+    print("   • Redémarrer: docker-compose -f docker-compose.dev.yml restart app")
+    print("   • Shell container: docker-compose -f docker-compose.dev.yml exec app bash")
 
 def quick_test():
     """Test rapide de l'application"""
@@ -136,15 +158,15 @@ def quick_test():
     try:
         import requests
         
-        # Test page d'accueil
-        response = requests.get("http://localhost:5000", timeout=5)
+        # Test page d'accueil (port mis à jour)
+        response = requests.get("http://localhost:5006", timeout=10)
         if response.status_code == 200:
-            print("✅ Application accessible sur http://localhost:5000")
+            print("✅ Application accessible sur http://localhost:5006")
         else:
             print(f"⚠️ Application répond avec code: {response.status_code}")
         
         # Test page de login
-        response = requests.get("http://localhost:5000/auth/login", timeout=5)
+        response = requests.get("http://localhost:5006/auth/login", timeout=10)
         if response.status_code == 200:
             print("✅ Page de login accessible")
         else:
@@ -152,16 +174,16 @@ def quick_test():
             
     except ImportError:
         print("⚠️ Module 'requests' non installé - test manuel requis")
-        print("   Testez manuellement: http://localhost:5000")
+        print("   Testez manuellement: http://localhost:5006")
     except Exception as e:
         print(f"⚠️ Erreur test: {e}")
-        print("   Vérifiez manuellement: http://localhost:5000")
+        print("   Vérifiez manuellement: http://localhost:5006")
 
 def main():
     """Fonction principale"""
-    print("🐳 DÉMARRAGE RAPIDE DOCKER - DATAALIGN")
+    print("🐳 DÉMARRAGE RAPIDE DOCKER DEV - DATAALIGN")
     print("=" * 50)
-    print("🎯 Configuration et lancement automatique")
+    print("🎯 Configuration et lancement automatique (Mode DEV)")
     print("=" * 50 + "\n")
     
     try:
@@ -181,12 +203,12 @@ def main():
             # Test rapide
             quick_test()
             
-            print("\n🎉 DATAALIGN DOCKER EST PRÊT !")
+            print("\n🎉 DATAALIGN DOCKER DEV EST PRÊT !")
             print("=" * 50)
-            print("🌐 Ouvrez votre navigateur sur: http://localhost:5000")
+            print("🌐 Ouvrez votre navigateur sur: http://localhost:5006")
             print("🔐 Connectez-vous avec: testVikinn / admin123")
-            print("📧 Emails capturés sur: http://localhost:8025")
-            print("\n📋 Pour arrêter: docker-compose down")
+            print("📧 Emails capturés sur: http://localhost:8026")
+            print("\n📋 Pour arrêter: docker-compose -f docker-compose.dev.yml down")
             
         else:
             print("❌ Erreur lors du démarrage des services")

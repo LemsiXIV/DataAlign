@@ -1,10 +1,10 @@
-# Development Dockerfile for DataAlign v2.0
+# Development Dockerfile for DataAlign v2.0 - Optimized for faster builds
 FROM python:3.13.0-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies in one layer
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     build-essential \
@@ -14,24 +14,25 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
+# Create non-root user early
 RUN useradd --create-home --shell /bin/bash dataalign
 
-# Copy and install Python dependencies
-COPY requirements.txt .
+# Copy requirements FIRST (for Docker layer caching)
+COPY requirements.txt package*.json ./
+
+# Install Python dependencies (cached if requirements.txt doesn't change)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy package.json and install Node dependencies (including dev dependencies)
-COPY package*.json ./
+# Install Node dependencies (cached if package.json doesn't change)
 RUN npm ci
 
-# Copy application code
-COPY . .
-
-# Create necessary directories
+# Create directories before copying code
 RUN mkdir -p /app/logs /app/uploads/source /app/uploads/archive /app/temp /app/backups
 
-# Build CSS assets
+# Copy application code (this layer changes most often)
+COPY . .
+
+# Build CSS assets with fallback
 RUN npx tailwindcss -i ./app/static/src/input.css -o ./app/static/dist/output.css --minify || \
     (echo "Tailwind build failed, creating empty CSS file" && mkdir -p ./app/static/dist && touch ./app/static/dist/output.css)
 

@@ -64,8 +64,11 @@ python docker_deploy.py start --env prod
 # Setup only (creates directories and .env file)
 python docker_deploy.py setup
 
-# Start environment (automatically runs setup first)
+# Start environment (automatically runs setup first) - SLOW FIRST TIME
 python docker_deploy.py start --env [dev|prod]
+
+# Quick start (no rebuild) - FAST for subsequent runs
+python docker_deploy.py quick-start --env [dev|prod]
 
 # Stop environment
 python docker_deploy.py stop --env [dev|prod]
@@ -79,6 +82,11 @@ python docker_deploy.py status --env [dev|prod]
 # Restart environment
 python docker_deploy.py restart --env [dev|prod]
 ```
+
+### ⏰ Performance Notes
+- **First run**: 5-15 minutes (downloading images, building)
+- **Quick start**: 30 seconds - 2 minutes (reuses existing images)
+- **See**: `DOCKER_PERFORMANCE.md` for optimization tips
 
 ## 🛠️ Manual Docker Commands
 

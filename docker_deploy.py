@@ -12,17 +12,35 @@ import time
 import secrets
 import string
 
-def run_command(command, shell=True, check=True):
+def run_command(command, shell=True, check=True, show_output=False):
     """Execute a command and return the result"""
     try:
         print(f"🔄 Executing: {command}")
-        result = subprocess.run(command, shell=shell, check=check, capture_output=True, text=True)
-        if result.stdout:
-            print(result.stdout)
+        
+        if show_output:
+            # For commands like docker build, show live output
+            process = subprocess.Popen(command, shell=shell, stdout=subprocess.PIPE, 
+                                     stderr=subprocess.STDOUT, text=True, bufsize=1, universal_newlines=True)
+            
+            output_lines = []
+            for line in process.stdout:
+                print(line.rstrip())  # Show live output
+                output_lines.append(line)
+            
+            process.wait()
+            if check and process.returncode != 0:
+                raise subprocess.CalledProcessError(process.returncode, command)
+            
+            result = subprocess.CompletedProcess(command, process.returncode, ''.join(output_lines), '')
+        else:
+            result = subprocess.run(command, shell=shell, check=check, capture_output=True, text=True)
+            if result.stdout:
+                print(result.stdout)
+        
         return result
     except subprocess.CalledProcessError as e:
         print(f"❌ Error executing command: {e}")
-        if e.stderr:
+        if hasattr(e, 'stderr') and e.stderr:
             print(f"Error output: {e.stderr}")
         return None
 
@@ -99,15 +117,19 @@ MYSQL_USER=DataAlign
 def start_development():
     """Start development environment"""
     print("🚀 Starting DataAlign development environment...")
+    print("⏰ This may take 5-10 minutes on first run (downloading images & building)")
     
     # Set up environment first
     setup_environment()
     
     # Stop any existing containers
+    print("\n🛑 Stopping any existing containers...")
     run_command("docker-compose -f docker-compose.dev.yml down", check=False)
     
-    # Start the development stack
-    result = run_command("docker-compose -f docker-compose.dev.yml up --build -d")
+    # Start the development stack with live output
+    print("\n🏗️  Building and starting containers (this is the slow part)...")
+    print("💡 Tip: Grab a coffee! Building Docker images takes time...")
+    result = run_command("docker-compose -f docker-compose.dev.yml up --build -d", show_output=True)
     
     if result:
         print("\n✅ Development environment started successfully!")
@@ -119,21 +141,30 @@ def start_development():
         print("\n👤 Default test users:")
         print("   • Admin: testVikinn / admin123")
         print("   • User: testuser / test123")
+        
+        # Check if services are healthy
+        print("\n⏳ Waiting for services to be ready...")
+        time.sleep(10)
+        run_command("docker-compose -f docker-compose.dev.yml ps")
     
     return result is not None
 
 def start_production():
     """Start production environment"""
     print("🚀 Starting DataAlign production environment...")
+    print("⏰ This may take 5-10 minutes on first run (downloading images & building)")
     
     # Set up environment first
     setup_environment()
     
     # Stop any existing containers
+    print("\n🛑 Stopping any existing containers...")
     run_command("docker-compose down", check=False)
     
-    # Start the production stack
-    result = run_command("docker-compose up --build -d")
+    # Start the production stack with live output
+    print("\n🏗️  Building and starting containers (this is the slow part)...")
+    print("💡 Tip: Grab a coffee! Building Docker images takes time...")
+    result = run_command("docker-compose up --build -d", show_output=True)
     
     if result:
         print("\n✅ Production environment started successfully!")
@@ -143,6 +174,53 @@ def start_production():
         print("\n🔍 View logs with: docker-compose logs -f")
         print("\n🔐 Important: Check IMPORTANT_PASSWORDS.txt for database credentials")
         print("⚠️  Remember to delete IMPORTANT_PASSWORDS.txt after noting the passwords!")
+        
+        # Check if services are healthy
+        print("\n⏳ Waiting for services to be ready...")
+        time.sleep(10)
+        run_command("docker-compose ps")
+    
+    return result is not None
+
+def quick_start_development():
+    """Start development environment without rebuilding (faster for subsequent runs)"""
+    print("⚡ Quick starting DataAlign development environment...")
+    print("💡 Using existing images - much faster!")
+    
+    # Stop any existing containers
+    run_command("docker-compose -f docker-compose.dev.yml down", check=False)
+    
+    # Start without rebuilding
+    result = run_command("docker-compose -f docker-compose.dev.yml up -d")
+    
+    if result:
+        print("\n✅ Development environment started quickly!")
+        print("📍 Access points:")
+        print("   • DataAlign App: http://localhost:5006")
+        print("   • Adminer (DB): http://localhost:8080")
+        print("   • MailHog: http://localhost:8025")
+        print("\n👤 Default test users:")
+        print("   • Admin: testVikinn / admin123")
+        print("   • User: testuser / test123")
+    
+    return result is not None
+
+def quick_start_production():
+    """Start production environment without rebuilding (faster for subsequent runs)"""
+    print("⚡ Quick starting DataAlign production environment...")
+    print("💡 Using existing images - much faster!")
+    
+    # Stop any existing containers
+    run_command("docker-compose down", check=False)
+    
+    # Start without rebuilding
+    result = run_command("docker-compose up -d")
+    
+    if result:
+        print("\n✅ Production environment started quickly!")
+        print("📍 Access points:")
+        print("   • DataAlign App: http://localhost:5004")
+        print("   • Nginx Proxy: http://localhost:80")
     
     return result is not None
 
@@ -180,7 +258,7 @@ def show_status(env='dev'):
 
 def main():
     parser = argparse.ArgumentParser(description="DataAlign Docker Management Script")
-    parser.add_argument('action', choices=['start', 'stop', 'logs', 'status', 'restart', 'setup'], 
+    parser.add_argument('action', choices=['start', 'stop', 'logs', 'status', 'restart', 'setup', 'quick-start'], 
                        help="Action to perform")
     parser.add_argument('--env', choices=['dev', 'prod'], default='dev',
                        help="Environment (dev or prod)")
@@ -195,6 +273,13 @@ def main():
         print("\n✅ Setup complete! You can now start the application with:")
         print("   python docker_deploy.py start --env dev")
         print("   python docker_deploy.py start --env prod")
+    
+    elif args.action == 'quick-start':
+        print("⚡ Quick start (no rebuild) - use this for subsequent runs...")
+        if args.env == 'dev':
+            quick_start_development()
+        else:
+            quick_start_production()
     
     elif args.action == 'start':
         if args.env == 'dev':

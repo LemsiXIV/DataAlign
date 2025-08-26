@@ -1,4 +1,4 @@
-# Development Dockerfile for DataAlign v2.0
+# Production Dockerfile for DataAlign v2.0
 FROM python:3.13.0-slim
 
 # Set working directory
@@ -21,9 +21,9 @@ RUN useradd --create-home --shell /bin/bash dataalign
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy package.json and install Node dependencies (including dev dependencies)
+# Copy package.json and install Node dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --only=production
 
 # Copy application code
 COPY . .
@@ -32,8 +32,7 @@ COPY . .
 RUN mkdir -p /app/logs /app/uploads/source /app/uploads/archive /app/temp /app/backups
 
 # Build CSS assets
-RUN npx tailwindcss -i ./app/static/src/input.css -o ./app/static/dist/output.css --minify || \
-    (echo "Tailwind build failed, creating empty CSS file" && mkdir -p ./app/static/dist && touch ./app/static/dist/output.css)
+RUN npx tailwindcss -i ./app/static/src/input.css -o ./app/static/dist/output.css --minify
 
 # Set ownership to dataalign user
 RUN chown -R dataalign:dataalign /app

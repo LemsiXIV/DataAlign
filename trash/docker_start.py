@@ -49,19 +49,55 @@ def build_image():
     print("2️⃣ CONSTRUCTION IMAGE DOCKER DEV")
     print("-" * 40)
     
-    # Set environment for compatibility
-    run_command("export DOCKER_BUILDKIT=0", "Désactivation BuildKit", critical=False)
+    # Try different build approaches for compatibility
+    build_commands = [
+        # First try: Use docker-compose to build (recommended for dev)
+        ("docker-compose -f docker-compose.dev.yml build --no-cache", "Construction via docker-compose"),
+        # Fallback: Direct docker build with legacy builder
+        ("DOCKER_BUILDKIT=0 docker build -f Dockerfile.dev -t dataalign:latest .", "Construction directe Docker"),
+        # Last resort: Build without BuildKit explicitly
+        ("docker build --progress=plain -f Dockerfile.dev -t dataalign:latest .", "Construction sans BuildKit")
+    ]
     
-    # Build de l'image avec Dockerfile.dev
-    run_command(
-        "docker build -f Dockerfile.dev -t dataalign:latest .", 
-        "Construction image DataAlign DEV"
-    )
+    build_success = False
+    for command, description in build_commands:
+        print(f"🔄 Tentative: {description}...")
+        result = run_command(command, description, critical=False)
+        if result is not None:
+            build_success = True
+            break
+        else:
+            print(f"⚠️ {description} a échoué, tentative suivante...")
+    
+    if not build_success:
+        print("❌ Toutes les méthodes de construction ont échoué")
+        print("💡 Solutions possibles:")
+        print("   1. Vérifiez que package.json existe")
+        print("   2. Essayez manuellement:")
+        print("      export DOCKER_BUILDKIT=0")
+        print("      docker-compose -f docker-compose.dev.yml build --no-cache")
+        print("   3. Si Tailwind CSS pose problème:")
+        print("      touch app/static/dist/output.css")
+        print("      docker-compose -f docker-compose.dev.yml build --no-cache")
+        
+        # Try one more fallback: skip build and use up --build
+        print("🔄 Tentative finale: démarrage avec build automatique...")
+        result = run_command(
+            "docker-compose -f docker-compose.dev.yml up -d --build", 
+            "Démarrage avec build automatique",
+            critical=False
+        )
+        if result is not None:
+            print("✅ Build automatique réussi, on continue...")
+            return  # Skip the rest of the build function
+        
+        sys.exit(1)
     
     # Vérifier l'image
     run_command(
-        "docker images dataalign:latest", 
-        "Vérification image créée"
+        "docker images | grep dataalign", 
+        "Vérification image créée",
+        critical=False
     )
     
     print("✅ Image Docker construite\n")
@@ -93,14 +129,33 @@ def start_development():
         critical=False
     )
     
-    # Démarrer MySQL d'abord
+    # Démarrer MySQL d'abord et attendre qu'il soit prêt
+    print("🔄 Démarrage MySQL...")
     run_command(
         "docker-compose -f docker-compose.dev.yml up -d mysql", 
         "Démarrage MySQL"
     )
     
-    print("⏳ Attente MySQL (45s)...")
-    time.sleep(45)
+    # Attendre que MySQL soit prêt avec health check
+    print("⏳ Attente de la disponibilité de MySQL...")
+    mysql_ready = False
+    max_attempts = 12  # 2 minutes max
+    
+    for attempt in range(max_attempts):
+        result = run_command(
+            "docker-compose -f docker-compose.dev.yml exec -T mysql mysqladmin ping -h localhost -u root -pdev_root_password",
+            f"Test MySQL (tentative {attempt + 1}/{max_attempts})",
+            critical=False
+        )
+        if result is not None:
+            mysql_ready = True
+            print("✅ MySQL est prêt")
+            break
+        print(f"⏳ MySQL pas encore prêt, attente 10s...")
+        time.sleep(10)
+    
+    if not mysql_ready:
+        print("⚠️ MySQL semble prendre du temps à démarrer, on continue quand même...")
     
     # Démarrer tous les services
     run_command(
@@ -109,7 +164,7 @@ def start_development():
     )
     
     # Attendre que les services soient prêts
-    print("⏳ Attente démarrage complet (30s)...")
+    print("⏳ Attente démarrage complet des services (30s)...")
     time.sleep(30)
     
     # Vérifier les services

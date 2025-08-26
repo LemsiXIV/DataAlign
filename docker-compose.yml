@@ -1,23 +1,51 @@
 version: '3.8'
 
 services:
-  # Application DataAlign
-  dataalign:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: dataalign_root_2024
+      MYSQL_DATABASE: DataAlign_prod
+      MYSQL_USER: DataAlign
+      MYSQL_PASSWORD: DataAlign_Prod_2024
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --bind-address=0.0.0.0
+      --wait_timeout=28800
+      --interactive_timeout=28800
+      --max_connections=200
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdataalign_root_2024"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - dataalign-network
+    restart: unless-stopped
+
+  # DataAlign Application
+  app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5004:5004"
     environment:
-      - FLASK_ENV=development
-      - DEBUG=True
-      - DATABASE_URL=mysql://dataalign:dataalign123@mysql:3306/dataalign_dev
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - MAIL_SERVER=localhost
-      - MAIL_PORT=1025
-      - MAIL_USE_TLS=False
-      - MAIL_USERNAME=""
-      - MAIL_PASSWORD=""
+      - FLASK_ENV=production
+      - DEBUG=False
+      - DATABASE_URL=mysql+pymysql://DataAlign:DataAlign_Prod_2024@mysql/DataAlign_prod?charset=utf8mb4
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - AUTO_MIGRATION=false
+      - PORT=5004
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
@@ -26,85 +54,33 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      mailhog:
-        condition: service_started
+    networks:
+      - dataalign-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:5004/health", "||", "exit", "1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - dataalign-network
-
-  # Base de données MySQL pour développement
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: dataalign_dev
-      MYSQL_USER: dataalign
-      MYSQL_PASSWORD: dataalign123
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
       retries: 5
-      start_period: 30s
-    networks:
-      - dataalign-network
+      start_period: 120s
 
-  # MailHog pour tester les emails en développement
-  mailhog:
-    image: mailhog/mailhog:latest
+  # Nginx Reverse Proxy (optional)
+  nginx:
+    image: nginx:alpine
     ports:
-      - "1025:1025"  # SMTP server
-      - "8025:8025"  # Web interface
-    restart: unless-stopped
-    networks:
-      - dataalign-network
-
-  # Redis pour cache (optionnel)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+      - "80:80"
+      - "443:443"
     volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - dataalign-network
-
-  # Adminer pour gérer la base de données via web
-  adminer:
-    image: adminer:latest
-    ports:
-      - "8080:8080"
-    environment:
-      ADMINER_DEFAULT_SERVER: mysql
-      ADMINER_DESIGN: pepa-linha
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
     depends_on:
-      - mysql
-    restart: unless-stopped
+      - app
     networks:
       - dataalign-network
+    restart: unless-stopped
 
 volumes:
   mysql_data:
-    driver: local
-  redis_data:
     driver: local
 
 networks:

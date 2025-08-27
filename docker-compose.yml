@@ -25,6 +25,14 @@ services:
     networks:
       - dataalign_net
 
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - dataalign_net
+
 networks:
   dataalign_net:
     driver: bridge

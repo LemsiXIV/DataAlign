@@ -31,7 +31,12 @@ def render_index_with_errors(file1_error=None, file2_error=None, project_error=N
 
 @fichiers_bp.route('/upload', methods=['POST'])
 def upload_file():
-    session.clear() # Clear session to avoid conflicts with previous uploads
+    # Clear only file-related session data to avoid conflicts with previous uploads
+    file_session_keys = ['df_path', 'df2_path', 'file1_path', 'file2_path', 'file1_info', 'file2_info', 
+                        'is_large_files', 'projet_id', 'file1_name', 'file2_name', 'project_folder',
+                        'download_results_path']
+    for key in file_session_keys:
+        session.pop(key, None)
     
     # Ensure user is logged in for project creation
     if not current_user.is_authenticated:
@@ -287,7 +292,12 @@ def upload_file():
 
 @fichiers_bp.route('/fast_test', methods=['POST'])
 def fast_upload():
-    session.clear()
+    # Clear only file-related session data
+    file_session_keys = ['df_path', 'df2_path', 'file1_path', 'file2_path', 'file1_info', 'file2_info', 
+                        'is_large_files', 'projet_id', 'file1_name', 'file2_name', 'project_folder',
+                        'download_results_path']
+    for key in file_session_keys:
+        session.pop(key, None)
 
     if 'file_fast_upload' not in request.files or 'file_fast_upload2' not in request.files:
         return render_index_with_errors(project_error="Veuillez sélectionner les deux fichiers", show_fast_modal=True)

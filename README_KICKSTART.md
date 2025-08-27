@@ -35,7 +35,7 @@ pip install -r requirements.txt
 python deploy.py
 
 # 3. Démarrage
-python start_production.py
+python run.py
 ```
 
 ### Option 3 : Manuel (Si problèmes)

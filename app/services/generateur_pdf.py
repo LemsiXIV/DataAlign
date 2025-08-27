@@ -85,7 +85,7 @@ class GenerateurPdf:
             f.write(rendered_html.encode('utf-8'))
             temp_html_path = f.name
 
-        config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+        config = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf')
 
         try:
             options = { 'enable-local-file-access': '' }
@@ -143,7 +143,7 @@ class GenerateurPdf:
             f.write(rendered_html.encode('utf-8'))
             temp_html_path = f.name
 
-        config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
+        config = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf')
 
         try:
             options = { 'enable-local-file-access': '' }

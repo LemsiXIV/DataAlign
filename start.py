@@ -43,28 +43,29 @@ def main():
         print("Cancelled.")
         sys.exit(0)
     
-    # Run the docker deploy script
+    # Start Docker containers with docker-compose
     try:
-        subprocess.run([sys.executable, "docker_deploy.py", "start", "--env", "dev"], check=True)
+        print("\n🐳 Building and starting Docker containers...")
+        subprocess.run(["docker-compose", "up", "--build", "-d"], check=True)
         
         print("\n" + "=" * 50)
         print("🎉 DataAlign is now running!")
         print("=" * 50)
         print("\n📍 Access your application:")
-        print("   🌐 DataAlign App: http://localhost:5006")
+        print("   🌐 DataAlign App: http://localhost:5000")
         print("   🗄️  Database Admin: http://localhost:8080")
-        print("   📧 Email Testing: http://localhost:8025")
         print("\n👤 Test with these users:")
         print("   👨‍💼 Admin: testVikinn / admin123")
         print("   👤 User: testuser / test123")
         print("\n🔧 Useful commands:")
-        print("   📋 View logs: python docker_deploy.py logs --env dev")
-        print("   🛑 Stop: python docker_deploy.py stop --env dev")
-        print("   🔄 Restart: python docker_deploy.py restart --env dev")
+        print("   📋 View logs: docker-compose logs -f")
+        print("   🛑 Stop: docker-compose down")
+        print("   🔄 Restart: docker-compose restart")
         
     except subprocess.CalledProcessError:
         print("❌ Failed to start DataAlign")
         print("Check the error messages above")
+        print("Try running: docker-compose down && docker-compose up --build")
         sys.exit(1)
 
 if __name__ == "__main__":

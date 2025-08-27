@@ -20,7 +20,7 @@
 ### Option 1 : Docker (Recommandé)
 ```bash
 # UNE SEULE COMMANDE POUR TOUT INSTALLER !
-python docker_start.py
+python start.py
 
 # Puis ouvrir : http://localhost:5000
 # Login : testVikinn / admin123
@@ -68,7 +68,7 @@ python run.py                     # Démarre l'app
 ### 🐳 Docker (si utilisé)
 - **Application** : http://localhost:5000
 - **Base de données** : http://localhost:8080 (Adminer)
-- **Emails** : http://localhost:8025 (MailHog)
+
 
 ---
 
@@ -115,10 +115,7 @@ python run.py                     # Démarre l'app
 Services inclus :
 ├── dataalign     # Application Flask
 ├── mysql         # Base de données avec données test
-├── mailhog       # Capture emails pour tests
-├── redis         # Cache pour performance
-├── adminer       # Interface web BDD
-└── nginx         # Reverse proxy (production)
+└── adminer       # Interface web BDD
 ```
 
 ---
@@ -128,11 +125,9 @@ Services inclus :
 ### 🚀 Scripts Principaux
 | Script | Usage | Description |
 |--------|-------|-------------|
-| `deploy.py` | `python deploy.py` | 🏗️ Installation complète automatisée |
-| `docker_start.py` | `python docker_start.py` | 🐳 Démarrage Docker automatisé |
+| `start.py` | `python start.py` | 🏗️ Installation complète automatisée |
 | `maintenance.py` | `python maintenance.py` | 🔧 Maintenance complète système |
 | `bypass_migrations.py` | `python bypass_migrations.py` | 🗄️ Contournement migrations Alembic |
-| `test_password_reset.py` | `python test_password_reset.py` | 🧪 Test système reset password |
 
 ### 🛠️ Scripts Spécialisés
 | Script | Usage | Description |
@@ -140,7 +135,6 @@ Services inclus :
 | `disable_migrations.py` | `python disable_migrations.py` | ⚙️ Désactivation permanente migrations |
 | `fix_database.py` | `python fix_database.py` | 🔧 Corrections spécifiques BDD |
 | `create_initial_users.py` | `python create_initial_users.py` | 👥 Création comptes de test |
-| `test_docker.py` | `python test_docker.py` | 🐳 Tests Docker complets |
 
 ---
 
@@ -153,18 +147,18 @@ Services inclus :
 ### 🚀 Lancement Automatique
 ```bash
 # Script tout-en-un (recommandé)
-python docker_start.py
+python start.py
 
 # OU manuel :
-docker-compose up -d
+docker-compose up --build
 ```
 
 ### 🌐 Accès après démarrage Docker
 | Service | URL | Login |
 |---------|-----|-------|
 | **DataAlign** | http://localhost:5000 | testVikinn / admin123 |
-| **Base de données** | http://localhost:8080 | dataalign / dataalign123 |
-| **Emails** | http://localhost:8025 | - |
+| **Base de données** | http://localhost:8080 | dataalign / dataalign |
+|
 
 ### 🔧 Commandes Docker Utiles
 ```bash
@@ -191,7 +185,7 @@ docker-compose ps
 ### 📁 Fichiers CI/CD
 - **`.gitlab-ci.yml`** - Pipeline automatisé
 - **`Dockerfile`** - Image optimisée multi-stage
-- **`docker-compose.prod.yml`** - Configuration production
+- **`docker-compose.yml`** - Configuration production
 
 ### 🔄 Pipeline Automatisé
 ```
@@ -589,7 +583,7 @@ DESIGN MODERNE ET RESPONSIVE :
 ### 🎯 Pour commencer MAINTENANT :
 ```bash
 # Choix 1 : Docker (recommandé)
-python docker_start.py
+python start.py
 
 # Choix 2 : Installation classique
 python deploy.py
@@ -611,3 +605,4 @@ python deploy.py
 *📅 Dernière mise à jour : Août 2025*  
 *🔧 Version : 2.0 - Reset Password + Docker + CI/CD*  
 *👨‍💻 Status : Production Ready*
+*devloped by Lemsi haithem*

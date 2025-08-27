@@ -6,14 +6,20 @@
 
 ### Option 1 : Docker (Recommandé)
 ```bash
-python docker_start.py
+python start.py
 # Puis : http://localhost:5000
 # Login : testVikinn / admin123
 ```
 
 ### Option 2 : Installation Classique
 ```bash
+# 1. Installation dépendances
+pip install -r requirements.txt
+
+# 2. Configuration automatique
 python deploy.py
+
+# 3. Démarrage
 python start_production.py
 ```
 

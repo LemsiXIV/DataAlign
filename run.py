@@ -9,6 +9,7 @@ import sys
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
+
 def wait_for_database(app, max_retries=30, retry_interval=2):
     """
     Attend que la base de données soit disponible
@@ -45,19 +46,25 @@ def cleanup_temp_files():
     TEMP_DIR = "temp"
     MAX_AGE_HOURS = 5
     
-    # Créer le contexte de l'application pour accéder à la DB
-    app = create_app()
-    
+    # Use the global app instance instead of creating a new one
     with app.app_context():
+        # Check if logs_execution table exists before trying to log
+        def safe_log(message, statut='succès'):
+            try:
+                log_entry = LogExecution(
+                    projet_id=None,
+                    statut=statut,
+                    message=message
+                )
+                db.session.add(log_entry)
+                db.session.commit()
+            except Exception as e:
+                # If logging fails, just print to console
+                print(f"[{datetime.now()}] Impossible d'enregistrer dans les logs: {e}")
+                print(f"[{datetime.now()}] Message: {message}")
         if not os.path.exists(TEMP_DIR):
             # Enregistrer dans les logs que le dossier n'existe pas
-            log_entry = LogExecution(
-                projet_id=None,  # Pas de projet spécifique
-                statut='échec',
-                message=f"Nettoyage automatique: Le dossier {TEMP_DIR} n'existe pas"
-            )
-            db.session.add(log_entry)
-            db.session.commit()
+            safe_log(f"Nettoyage automatique: Le dossier {TEMP_DIR} n'existe pas", 'échec')
             print(f"[{datetime.now()}] Le dossier {TEMP_DIR} n'existe pas")
             return
         
@@ -98,13 +105,7 @@ def cleanup_temp_files():
             error_msg = f"Erreur lors de l'accès au dossier {TEMP_DIR}: {e}"
             
             # Enregistrer l'erreur dans les logs
-            log_entry = LogExecution(
-                projet_id=None,
-                statut='échec',
-                message=f"Nettoyage automatique: {error_msg}"
-            )
-            db.session.add(log_entry)
-            db.session.commit()
+            safe_log(f"Nettoyage automatique: {error_msg}", 'échec')
             
             print(f"[{datetime.now()}] {error_msg}")
             return
@@ -134,24 +135,12 @@ def cleanup_temp_files():
             
             statut = 'succès' if not errors else ('échec' if deleted_count == 0 else 'succès')
             
-            log_entry = LogExecution(
-                projet_id=None,
-                statut=statut,
-                message=message
-            )
-            db.session.add(log_entry)
-            db.session.commit()
+            safe_log(message, statut)
             
             print(f"[{datetime.now()}] Nettoyage terminé: {deleted_count} fichiers supprimés, {size_mb:.2f} MB libérés")
         else:
             # Aucun fichier à supprimer
-            log_entry = LogExecution(
-                projet_id=None,
-                statut='succès',
-                message="Nettoyage automatique: Aucun fichier temporaire à supprimer"
-            )
-            db.session.add(log_entry)
-            db.session.commit()
+            safe_log("Nettoyage automatique: Aucun fichier temporaire à supprimer", 'succès')
             
             print(f"[{datetime.now()}] Aucun fichier à supprimer")
 
@@ -159,6 +148,9 @@ def start_cleanup_timer():
     """
     Démarre un timer pour le nettoyage automatique toutes les 5 heures
     """
+    # Wait a bit to ensure database is fully initialized
+    time.sleep(5)
+    
     cleanup_temp_files()  # Nettoyage initial
     
     # Programmer le prochain nettoyage dans 5 heures (18000 secondes)
@@ -168,22 +160,24 @@ def start_cleanup_timer():
     
     print(f"[{datetime.now()}] Prochain nettoyage programmé dans 5 heures")
 
-if __name__ == '__main__':
-    # 1. Récupérer l'environnement (développement, production...)
+def initialize_app():
+    """
+    Initialize the application - runs both for direct execution and Gunicorn
+    """
     env = os.getenv('FLASK_ENV', 'development')
     print(f"🌍 Environnement: {env}")
+    print("🏗️ Initialisation de l'application Flask...")
 
-    # 2. Créer l'app avec la config adaptée
-    print("🏗️ Création de l'application Flask...")
-    app = create_app(env)
-
-    # 3. Attendre que la base de données soit prête
+    # 1. Attendre que la base de données soit prête
     if not wait_for_database(app):
         print("❌ Impossible de se connecter à la base de données. Arrêt de l'application.")
-        sys.exit(1)
+        if __name__ == '__main__':
+            sys.exit(1)
+        else:
+            # For Gunicorn, we can't exit, but we can raise an exception
+            raise RuntimeError("Database connection failed")
 
     with app.app_context():
-        # 4. Lancer auto migration seulement si configuré
         print("🔄 Initialisation des migrations automatiques...")
         try:
             init_auto_migration(app)
@@ -192,24 +186,38 @@ if __name__ == '__main__':
             print(f"❌ Erreur lors des migrations automatiques: {e}")
             print("⚠️ L'application va continuer mais certaines fonctionnalités peuvent ne pas fonctionner")
 
-        # 5. Fallback : créer les tables si besoin (pas idéal en prod)
-        try:
-            db.create_all()
-            print("✅ Tables de base de données vérifiées")
-        except Exception as e:
-            print(f"❌ Erreur lors de la création des tables: {e}")
+        # Retry table creation with better error handling
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                db.create_all()
+                print("✅ Tables de base de données vérifiées")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"⏳ Tentative {attempt + 1} de création des tables échouée: {e}")
+                    print("   Nouvelle tentative dans 2 secondes...")
+                    time.sleep(2)
+                else:
+                    print(f"❌ Erreur lors de la création des tables après {max_retries} tentatives: {e}")
 
-    # 6. Démarrer le nettoyage périodique
+    # Only start cleanup timer after successful database initialization
     print(f"🧹 Démarrage du service de nettoyage automatique")
     start_cleanup_timer()
 
-    # 7. Démarrer l'app Flask
-    print("🚀 Démarrage de l'application DataAlign...")
-    print(f"📍 L'application sera accessible sur http://localhost:5004")
-    
-    # Configuration du serveur Flask
-    host = '0.0.0.0'  # Important pour Docker
-    port = int(os.environ.get('PORT', 5004))
+# Create the app globally so Gunicorn can import it
+env = os.getenv('FLASK_ENV', 'development')
+app = create_app(env)
+
+# Initialize the app - this runs both for direct execution and when imported by Gunicorn
+initialize_app()
+
+if __name__ == '__main__':
+    print("🚀 Démarrage de l'application DataAlign en mode développement...")
+    print(f"📍 L'application sera accessible sur http://localhost:5000")
+
+    host = '0.0.0.0'  
+    port = int(os.environ.get('PORT', 5000))
     debug = (env == 'development')
     
     app.run(host=host, port=port, debug=debug)

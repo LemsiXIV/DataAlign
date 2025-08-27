@@ -1,88 +1,30 @@
-version: '3.8'
-
+version: "3.9"
 services:
-  # MySQL Database
-  mysql:
+  db:
     image: mysql:8.0
+    container_name: mysql_db
     environment:
-      MYSQL_ROOT_PASSWORD: dataalign_root_2024
-      MYSQL_DATABASE: DataAlign_prod
-      MYSQL_USER: DataAlign
-      MYSQL_PASSWORD: DataAlign_Prod_2024
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dataalign
+      MYSQL_USER: dataalign
+      MYSQL_PASSWORD: dataalign
     ports:
       - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d
-    command: >
-      --default-authentication-plugin=mysql_native_password
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --bind-address=0.0.0.0
-      --wait_timeout=28800
-      --interactive_timeout=28800
-      --max_connections=200
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pdataalign_root_2024"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
     networks:
-      - dataalign-network
-    restart: unless-stopped
+      - dataalign_net
 
-  # DataAlign Application
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "5004:5004"
+  web:
+    build: .
+    container_name: dataalign_app
+    depends_on:
+      - db
     environment:
-      - FLASK_ENV=production
-      - DEBUG=False
-      - DATABASE_URL=mysql+pymysql://DataAlign:DataAlign_Prod_2024@mysql/DataAlign_prod?charset=utf8mb4
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
-      - AUTO_MIGRATION=false
-      - PORT=5004
-    volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
-      - ./temp:/app/temp
-      - ./backups:/app/backups
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - dataalign-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5004/health", "||", "exit", "1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
-
-  # Nginx Reverse Proxy (optional)
-  nginx:
-    image: nginx:alpine
+      DATABASE_URL: "mysql+pymysql://dataalign:dataalign@db:3306/dataalign"
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./docker/nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - app
+      - "5000:5000"
     networks:
-      - dataalign-network
-    restart: unless-stopped
-
-volumes:
-  mysql_data:
-    driver: local
+      - dataalign_net
 
 networks:
-  dataalign-network:
+  dataalign_net:
     driver: bridge

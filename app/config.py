@@ -31,7 +31,7 @@ class DevelopmentConfig(Config):
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get('DATABASE_URL') or 
         os.environ.get('DEV_DATABASE_URL') or 
-        'mysql+pymysql://DataAlign:DataAlign@localhost:3307/DataAlign_dev?charset=utf8mb4'
+        'mysql+pymysql://DataAlign:DataAlign@localhost:3306/DataAlign_dev?charset=utf8mb4'
     )
 
 class ProductionConfig(Config):

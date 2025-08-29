@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from .memory_manager import MemoryManager, ChunkProcessor
 from app import db
+from app.utils.encoding_utils import safe_read_csv, detect_csv_encoding
 
 class ComparateurFichiersAvecMySQL:
     """
@@ -145,7 +146,8 @@ class ComparateurFichiersAvecMySQL:
         ext = file_path.split('.')[-1].lower()
         
         if ext == 'csv':
-            chunk_iter = pd.read_csv(file_path, chunksize=self.chunk_size)
+            encoding = detect_csv_encoding(file_path)
+            chunk_iter = pd.read_csv(file_path, chunksize=self.chunk_size, encoding=encoding)
             for chunk in chunk_iter:
                 yield chunk
         elif ext in ['xls', 'xlsx']:
@@ -356,12 +358,12 @@ class ComparateurFichiersAvecMySQL:
         ext2 = self.file2_path.split('.')[-1].lower()
         
         if ext1 == 'csv':
-            df1 = pd.read_csv(self.file1_path)
+            df1 = safe_read_csv(self.file1_path)
         elif ext1 in ['xls', 'xlsx']:
             df1 = pd.read_excel(self.file1_path)
         
         if ext2 == 'csv':
-            df2 = pd.read_csv(self.file2_path)
+            df2 = safe_read_csv(self.file2_path)
         elif ext2 in ['xls', 'xlsx']:
             df2 = pd.read_excel(self.file2_path)
         

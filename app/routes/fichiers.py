@@ -198,11 +198,36 @@ def upload_file():
             print(f"Using samples: {len(df)} and {len(df2)} rows for preview")
             
         else:
-            # For smaller files, read normally
-            df = pd.read_csv(filepath) if file.filename.endswith('.csv') else (
-                 pd.read_excel(filepath) if file.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath))
-            df2 = pd.read_csv(filepath2) if file2.filename.endswith('.csv') else (
-                  pd.read_excel(filepath2) if file2.filename.endswith(('.xls', '.xlsx')) else pd.read_json(filepath2))
+            # For smaller files, read normally with encoding detection
+            def safe_read_csv(filepath, filename):
+                """Safely read CSV with multiple encoding attempts"""
+                encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'iso-8859-1', 'cp1252']
+                for encoding in encodings_to_try:
+                    try:
+                        return pd.read_csv(filepath, encoding=encoding)
+                    except UnicodeDecodeError:
+                        continue
+                    except Exception as e:
+                        # If it's not an encoding error, reraise it
+                        if "codec can't decode" not in str(e):
+                            raise e
+                        continue
+                raise ValueError(f"Impossible de lire le fichier {filename} avec les encodages supportés")
+            
+            if file.filename.endswith('.csv'):
+                df = safe_read_csv(filepath, file.filename)
+            elif file.filename.endswith(('.xls', '.xlsx')):
+                df = pd.read_excel(filepath)
+            else:
+                df = pd.read_json(filepath)
+                
+            if file2.filename.endswith('.csv'):
+                df2 = safe_read_csv(filepath2, file2.filename)
+            elif file2.filename.endswith(('.xls', '.xlsx')):
+                df2 = pd.read_excel(filepath2)
+            else:
+                df2 = pd.read_json(filepath2)
+                
             session['is_large_files'] = False
             
             # Store in temporary files only for small files

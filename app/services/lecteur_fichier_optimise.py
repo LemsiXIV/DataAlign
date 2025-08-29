@@ -13,11 +13,33 @@ class LecteurFichierOptimise:
         ext = file_path.split('.')[-1].lower()
         
         if ext == 'csv':
-            # Read just first few rows to get column info
-            sample_df = pd.read_csv(file_path, nrows=5)
-            # Get total row count efficiently
-            with open(file_path, 'r', encoding='utf-8') as f:
-                row_count = sum(1 for line in f) - 1  # Subtract header
+            # Try multiple encodings
+            encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'iso-8859-1', 'cp1252']
+            sample_df = None
+            used_encoding = None
+            
+            for encoding in encodings_to_try:
+                try:
+                    sample_df = pd.read_csv(file_path, nrows=5, encoding=encoding)
+                    used_encoding = encoding
+                    break
+                except UnicodeDecodeError:
+                    continue
+                except Exception as e:
+                    continue
+            
+            if sample_df is None:
+                raise ValueError("Impossible de lire le fichier avec les encodages supportés (utf-8, latin-1, windows-1252)")
+            
+            # Get total row count efficiently with the same encoding
+            try:
+                with open(file_path, 'r', encoding=used_encoding) as f:
+                    row_count = sum(1 for line in f) - 1  # Subtract header
+            except Exception:
+                # Fallback: read the file and count rows
+                temp_df = pd.read_csv(file_path, encoding=used_encoding)
+                row_count = len(temp_df)
+                
         elif ext in ['xls', 'xlsx']:
             # For Excel, read small sample first
             sample_df = pd.read_excel(file_path, nrows=5)
@@ -32,15 +54,33 @@ class LecteurFichierOptimise:
             'total_rows': row_count,
             'total_columns': len(sample_df.columns),
             'sample_data': sample_df.to_dict(orient='records'),
-            'file_extension': ext
+            'file_extension': ext,
+            'encoding': used_encoding if ext == 'csv' else None
         }
     
-    def read_file_chunks(self, file_path: str) -> Iterator[pd.DataFrame]:
+    def read_file_chunks(self, file_path: str, encoding: str = None) -> Iterator[pd.DataFrame]:
         """Read file in chunks to manage memory usage"""
         ext = file_path.split('.')[-1].lower()
         
         if ext == 'csv':
-            chunk_iter = pd.read_csv(file_path, chunksize=self.chunk_size)
+            # Determine encoding if not provided
+            if encoding is None:
+                encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'iso-8859-1', 'cp1252']
+                for enc in encodings_to_try:
+                    try:
+                        # Test with first few rows
+                        pd.read_csv(file_path, nrows=5, encoding=enc)
+                        encoding = enc
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                    except Exception:
+                        continue
+                
+                if encoding is None:
+                    encoding = 'utf-8'  # Fallback
+            
+            chunk_iter = pd.read_csv(file_path, chunksize=self.chunk_size, encoding=encoding)
             for chunk in chunk_iter:
                 yield chunk
         elif ext in ['xls', 'xlsx']:
@@ -76,16 +116,16 @@ class LecteurFichierOptimise:
         ext = file_path.split('.')[-1].lower()
         
         if ext == 'csv':
-            # Read every nth row to get distributed sample
-            total_rows = self.read_file_info(file_path)['total_rows']
+            # Get file info including encoding
+            file_info = self.read_file_info(file_path)
+            encoding = file_info.get('encoding', 'utf-8')
+            total_rows = file_info['total_rows']
+            
             if total_rows <= sample_size:
-                return pd.read_csv(file_path)
+                return pd.read_csv(file_path, encoding=encoding)
             
-            # Calculate step size to get approximately sample_size rows
-            step = max(1, total_rows // sample_size)
-            
-            # Use nrows to limit the number of rows read instead of skiprows
-            return pd.read_csv(file_path, nrows=sample_size)
+            # Use nrows to limit the number of rows read
+            return pd.read_csv(file_path, nrows=sample_size, encoding=encoding)
         
         elif ext in ['xls', 'xlsx']:
             return pd.read_excel(file_path, nrows=sample_size)
@@ -110,7 +150,8 @@ def read_uploaded_file_optimized(file_storage, max_preview_rows: int = 1000):
         if file_info['total_rows'] <= 10000 and file_info['total_columns'] <= 50:
             ext = file_info['file_extension']
             if ext == 'csv':
-                df = pd.read_csv(temp_path)
+                encoding = file_info.get('encoding', 'utf-8')
+                df = pd.read_csv(temp_path, encoding=encoding)
             elif ext in ['xls', 'xlsx']:
                 df = pd.read_excel(temp_path)
             

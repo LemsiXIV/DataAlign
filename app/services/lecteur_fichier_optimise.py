@@ -13,20 +13,22 @@ class LecteurFichierOptimise:
         ext = file_path.split('.')[-1].lower()
         
         if ext == 'csv':
-            # Try multiple encodings
+            # Try multiple encodings with robust parameters
             encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'iso-8859-1', 'cp1252']
             sample_df = None
             used_encoding = None
             
             for encoding in encodings_to_try:
                 try:
-                    sample_df = pd.read_csv(file_path, nrows=5, encoding=encoding)
+                    sample_df = pd.read_csv(file_path, nrows=5, encoding=encoding,
+                                          on_bad_lines='skip', engine='python')
                     used_encoding = encoding
                     break
                 except UnicodeDecodeError:
                     continue
                 except Exception as e:
-                    continue
+                    if "codec can't decode" not in str(e) and "tokenizing data" not in str(e):
+                        continue
             
             if sample_df is None:
                 raise ValueError("Impossible de lire le fichier avec les encodages supportés (utf-8, latin-1, windows-1252)")
@@ -37,7 +39,8 @@ class LecteurFichierOptimise:
                     row_count = sum(1 for line in f) - 1  # Subtract header
             except Exception:
                 # Fallback: read the file and count rows
-                temp_df = pd.read_csv(file_path, encoding=used_encoding)
+                temp_df = pd.read_csv(file_path, encoding=used_encoding,
+                                    on_bad_lines='skip', engine='python')
                 row_count = len(temp_df)
                 
         elif ext in ['xls', 'xlsx']:
@@ -69,7 +72,8 @@ class LecteurFichierOptimise:
                 for enc in encodings_to_try:
                     try:
                         # Test with first few rows
-                        pd.read_csv(file_path, nrows=5, encoding=enc)
+                        pd.read_csv(file_path, nrows=5, encoding=enc,
+                                  on_bad_lines='skip', engine='python')
                         encoding = enc
                         break
                     except UnicodeDecodeError:
@@ -80,7 +84,8 @@ class LecteurFichierOptimise:
                 if encoding is None:
                     encoding = 'utf-8'  # Fallback
             
-            chunk_iter = pd.read_csv(file_path, chunksize=self.chunk_size, encoding=encoding)
+            chunk_iter = pd.read_csv(file_path, chunksize=self.chunk_size, encoding=encoding,
+                                   on_bad_lines='skip', engine='python')
             for chunk in chunk_iter:
                 yield chunk
         elif ext in ['xls', 'xlsx']:
@@ -122,10 +127,12 @@ class LecteurFichierOptimise:
             total_rows = file_info['total_rows']
             
             if total_rows <= sample_size:
-                return pd.read_csv(file_path, encoding=encoding)
+                return pd.read_csv(file_path, encoding=encoding,
+                                 on_bad_lines='skip', engine='python')
             
             # Use nrows to limit the number of rows read
-            return pd.read_csv(file_path, nrows=sample_size, encoding=encoding)
+            return pd.read_csv(file_path, nrows=sample_size, encoding=encoding,
+                             on_bad_lines='skip', engine='python')
         
         elif ext in ['xls', 'xlsx']:
             return pd.read_excel(file_path, nrows=sample_size)
@@ -151,7 +158,8 @@ def read_uploaded_file_optimized(file_storage, max_preview_rows: int = 1000):
             ext = file_info['file_extension']
             if ext == 'csv':
                 encoding = file_info.get('encoding', 'utf-8')
-                df = pd.read_csv(temp_path, encoding=encoding)
+                df = pd.read_csv(temp_path, encoding=encoding,
+                               on_bad_lines='skip', engine='python')
             elif ext in ['xls', 'xlsx']:
                 df = pd.read_excel(temp_path)
             

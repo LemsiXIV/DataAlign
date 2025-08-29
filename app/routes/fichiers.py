@@ -199,30 +199,23 @@ def upload_file():
             
         else:
             # For smaller files, read normally with encoding detection
-            def safe_read_csv(filepath, filename):
-                """Safely read CSV with multiple encoding attempts"""
-                encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'iso-8859-1', 'cp1252']
-                for encoding in encodings_to_try:
-                    try:
-                        return pd.read_csv(filepath, encoding=encoding)
-                    except UnicodeDecodeError:
-                        continue
-                    except Exception as e:
-                        # If it's not an encoding error, reraise it
-                        if "codec can't decode" not in str(e):
-                            raise e
-                        continue
-                raise ValueError(f"Impossible de lire le fichier {filename} avec les encodages supportés")
+            def safe_read_csv_local(filepath, filename):
+                """Safely read CSV with multiple encoding attempts and error handling"""
+                from app.utils.encoding_utils import safe_read_csv
+                try:
+                    return safe_read_csv(filepath)
+                except Exception as e:
+                    raise ValueError(f"Erreur lors de la lecture du fichier {filename}: {str(e)}")
             
             if file.filename.endswith('.csv'):
-                df = safe_read_csv(filepath, file.filename)
+                df = safe_read_csv_local(filepath, file.filename)
             elif file.filename.endswith(('.xls', '.xlsx')):
                 df = pd.read_excel(filepath)
             else:
                 df = pd.read_json(filepath)
                 
             if file2.filename.endswith('.csv'):
-                df2 = safe_read_csv(filepath2, file2.filename)
+                df2 = safe_read_csv_local(filepath2, file2.filename)
             elif file2.filename.endswith(('.xls', '.xlsx')):
                 df2 = pd.read_excel(filepath2)
             else:

@@ -16,6 +16,21 @@ from collections import defaultdict
 
 projets_bp = Blueprint('projets', __name__)
 
+def get_absolute_path(relative_path):
+    """
+    Convertit un chemin relatif en chemin absolu adapté à l'environnement Docker
+    """
+    if os.path.isabs(relative_path):
+        return relative_path
+    
+    current_dir = os.getcwd()
+    # Dans Docker, nous sommes dans /app, donc les uploads sont dans /app/uploads
+    if relative_path.startswith('uploads/'):
+        return os.path.join('/app', relative_path)
+    else:
+        # Chemin relatif standard
+        return os.path.join(current_dir, relative_path)
+
 def notify_all_admins(title, message, notification_type='info', related_request_id=None):
     """Helper function to notify all admin users"""
     try:
@@ -86,15 +101,8 @@ def dashboard():
             if os.path.isabs(projet.emplacement_archive):
                 archive_path = projet.emplacement_archive
             else:
-                # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
-                current_dir = os.getcwd()
-                if current_dir.endswith('app'):
-                    # Si on est dans le dossier app/, remonter d'un niveau
-                    project_root = os.path.dirname(current_dir)
-                else:
-                    # Sinon, on est déjà à la racine
-                    project_root = current_dir
-                archive_path = os.path.join(project_root, projet.emplacement_archive)
+                # Méthode pour Docker : partir du répertoire courant
+                archive_path = get_absolute_path(projet.emplacement_archive)
             
             if os.path.exists(archive_path):
                 # Créer un traitement "par défaut" basé sur les fichiers existants
@@ -409,15 +417,8 @@ def projet_chart(projet_id):
     if os.path.isabs(projet.emplacement_archive):
         archive_path = projet.emplacement_archive
     else:
-        # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
-        current_dir = os.getcwd()
-        if current_dir.endswith('app'):
-            # Si on est dans le dossier app/, remonter d'un niveau
-            project_root = os.path.dirname(current_dir)
-        else:
-            # Sinon, on est déjà à la racine
-            project_root = current_dir
-        archive_path = os.path.join(project_root, projet.emplacement_archive)
+        # Méthode pour Docker : partir du répertoire courant
+        archive_path = get_absolute_path(projet.emplacement_archive)
     
     if not os.path.exists(archive_path):
         return jsonify({'error': f'Archive introuvable: {archive_path}'}), 404
@@ -484,13 +485,9 @@ def treatment_chart(treatment_id):
             if os.path.isabs(treatment.chemin_archive):
                 chart_path = os.path.join(treatment.chemin_archive, chart_filename)
             else:
-                # chemin_archive is relative to project root, not app directory
-                current_dir = os.getcwd()
-                if current_dir.endswith('app'):
-                    project_root = os.path.dirname(current_dir)
-                else:
-                    project_root = current_dir
-                chart_path = os.path.join(project_root, treatment.chemin_archive, chart_filename)
+                # Pour Docker, nous sommes dans /app
+                # chemin_archive est relatif à la racine du projet
+                chart_path = os.path.join(get_absolute_path(treatment.chemin_archive), chart_filename)
             
             print(f"DEBUG: New format chart path: {chart_path}")
         else:
@@ -501,11 +498,8 @@ def treatment_chart(treatment_id):
                     archive_path = projet.emplacement_archive
                 else:
                     current_dir = os.getcwd()
-                    if current_dir.endswith('app'):
-                        project_root = os.path.dirname(current_dir)
-                    else:
-                        project_root = current_dir
-                    archive_path = os.path.join(project_root, projet.emplacement_archive)
+                    # Dans Docker, nous sommes dans /app, donc les uploads sont dans /app/uploads
+                    archive_path = get_absolute_path(projet.emplacement_archive)
                 
                 chart_path = os.path.join(archive_path, treatment.nom_fichier_graphe)
                 print(f"DEBUG: Fallback chart path: {chart_path}")
@@ -515,9 +509,14 @@ def treatment_chart(treatment_id):
         
         if not chart_path or not os.path.exists(chart_path):
             # Try to find any chart files in the treatment directory for debugging
-            if treatment.chemin_archive and os.path.exists(treatment.chemin_archive):
-                files_in_dir = os.listdir(treatment.chemin_archive)
-                print(f"DEBUG: Files in treatment directory: {files_in_dir}")
+            if treatment.chemin_archive:
+                absolute_treatment_path = get_absolute_path(treatment.chemin_archive)
+                print(f"DEBUG: Looking in treatment directory: {absolute_treatment_path}")
+                if os.path.exists(absolute_treatment_path):
+                    files_in_dir = os.listdir(absolute_treatment_path)
+                    print(f"DEBUG: Files in treatment directory: {files_in_dir}")
+                else:
+                    print(f"DEBUG: Treatment directory does not exist: {absolute_treatment_path}")
             
             return jsonify({'error': f'Graphique introuvable: {chart_path}'}), 404
         
@@ -630,13 +629,9 @@ def download_treatment_zip(treatment_id):
     if os.path.isabs(treatment.chemin_archive):
         treatment_path = treatment.chemin_archive
     else:
+        # Pour Docker, nous sommes dans /app
         # chemin_archive est relatif à la racine du projet
-        current_dir = os.getcwd()
-        if current_dir.endswith('app'):
-            project_root = os.path.dirname(current_dir)
-        else:
-            project_root = current_dir
-        treatment_path = os.path.join(project_root, treatment.chemin_archive)
+        treatment_path = get_absolute_path(treatment.chemin_archive)
     
     if not os.path.exists(treatment_path):
         flash(f"Dossier de traitement introuvable: {treatment_path}", "error")

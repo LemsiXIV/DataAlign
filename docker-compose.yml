@@ -22,6 +22,9 @@ services:
       DATABASE_URL: "mysql+pymysql://dataalign:dataalign@db:3306/dataalign"
     ports:
       - "5000:5000"
+    volumes:
+      - uploads_data:/app/uploads
+      - temp_data:/app/temp
     networks:
       - dataalign_net
 
@@ -36,3 +39,7 @@ services:
 networks:
   dataalign_net:
     driver: bridge
+
+volumes:
+  uploads_data:
+  temp_data:

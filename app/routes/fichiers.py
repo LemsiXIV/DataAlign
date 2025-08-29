@@ -385,7 +385,7 @@ def debug_session():
 def download_excel():
     """Download comparison results as Excel file"""
     try:
-        from ..services.generateur_excel import generer_excel
+        from ..services.generateur_excel import GenerateurExcel
         
         # Check if we have comparison results path in session
         if 'download_results_path' not in session:
@@ -404,15 +404,15 @@ def download_excel():
         with open(temp_path, 'rb') as f:
             resultats = pickle.load(f)
         
-        # Generate Excel file
-        excel_path = generer_excel(resultats)
+        # Generate Excel file using GenerateurExcel class
+        generateur_excel = GenerateurExcel(
+            ecarts1=resultats['ecarts_fichier1'],
+            ecarts2=resultats['ecarts_fichier2'],
+            communs=resultats['communs']
+        )
+        excel_response = generateur_excel.generer_rapport()
         
-        if excel_path and os.path.exists(excel_path):
-            return send_file(excel_path, as_attachment=True, 
-                           download_name=f"comparaison_resultats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
-        else:
-            flash('Erreur lors de la génération du fichier Excel.', 'error')
-            return redirect(url_for('fichiers.upload_file'))
+        return excel_response
             
     except Exception as e:
         flash(f'Erreur lors du téléchargement: {str(e)}', 'error')
@@ -422,7 +422,7 @@ def download_excel():
 def download_pdf():
     """Download comparison results as PDF file"""
     try:
-        from ..services.generateur_pdf import generer_pdf
+        from ..services.generateur_pdf import GenerateurPdf
         
         # Check if we have comparison results path in session
         if 'download_results_path' not in session:
@@ -441,15 +441,19 @@ def download_pdf():
         with open(temp_path, 'rb') as f:
             resultats = pickle.load(f)
         
-        # Generate PDF file
-        pdf_path = generer_pdf(resultats)
+        # Generate PDF file using GenerateurPdf class
+        generateur_pdf = GenerateurPdf(
+            ecarts1=resultats['ecarts_fichier1'],
+            ecarts2=resultats['ecarts_fichier2'],
+            file1_name=session.get('file1_name', 'Fichier 1'),
+            file2_name=session.get('file2_name', 'Fichier 2'),
+            total1=resultats.get('total1', len(resultats['ecarts_fichier1'])),
+            total2=resultats.get('total2', len(resultats['ecarts_fichier2'])),
+            communes=len(resultats['communs'])
+        )
+        pdf_response = generateur_pdf.generer_pdf()
         
-        if pdf_path and os.path.exists(pdf_path):
-            return send_file(pdf_path, as_attachment=True,
-                           download_name=f"comparaison_resultats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-        else:
-            flash('Erreur lors de la génération du fichier PDF.', 'error')
-            return redirect(url_for('fichiers.upload_file'))
+        return pdf_response
             
     except Exception as e:
         flash(f'Erreur lors du téléchargement: {str(e)}', 'error')

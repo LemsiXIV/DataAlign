@@ -306,7 +306,11 @@ def compare():
     temp_results = {
         'ecarts_fichier1': results['ecarts_fichier1'],
         'ecarts_fichier2': results['ecarts_fichier2'],
-        'communs': results['communs']
+        'communs': results['communs'],
+        'file1_name': session.get('file1_name', 'Fichier 1'),
+        'file2_name': session.get('file2_name', 'Fichier 2'),
+        'total1': results.get('nb_df', 0),
+        'total2': results.get('nb_df2', 0)
     }
     pickle.dump(temp_results, temp_file)
     temp_file.close()
@@ -424,7 +428,11 @@ def fast_compare():
     temp_results = {
         'ecarts_fichier1': results['ecarts_fichier1'],
         'ecarts_fichier2': results['ecarts_fichier2'],
-        'communs': results['communs']
+        'communs': results['communs'],
+        'file1_name': session.get('file1_name', 'Fichier 1'),
+        'file2_name': session.get('file2_name', 'Fichier 2'),
+        'total1': results.get('nb_df', 0),
+        'total2': results.get('nb_df2', 0)
     }
     pickle.dump(temp_results, temp_file)
     temp_file.close()

@@ -10,6 +10,8 @@ services:
       MYSQL_PASSWORD: dataalign
     ports:
       - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
     networks:
       - dataalign_net
 
@@ -43,3 +45,4 @@ networks:
 volumes:
   uploads_data:
   temp_data:
+  mysql_data:

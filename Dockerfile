@@ -25,6 +25,12 @@ COPY . .
  
 # Expose port (Flask default)
 EXPOSE 5000
+
+# Set environment variables for production
+ENV FLASK_ENV=production
+ENV FLASK_DEBUG=false
+ENV AUTO_MIGRATION=false
+ENV AUTO_PDF_GENERATION=true
  
-# Run the application
-CMD ["gunicorn", "-w", "2", "-b","0.0.0.0:5000","run:app"]
+# Run the application with increased timeout for large file processing
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "--timeout", "300", "--worker-class", "sync", "--max-requests", "100", "--max-requests-jitter", "10", "run:app"]

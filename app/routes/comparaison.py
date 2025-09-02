@@ -137,6 +137,9 @@ def compare():
     file2_name = session.get('file2_name', 'Fichier 2')
 
     # Auto-generate Excel and PDF files and save them to archive (only for non-fast tests)
+    # Check if auto PDF generation is enabled (enabled by default for dashboard access)
+    auto_pdf_enabled = os.getenv('AUTO_PDF_GENERATION', 'true').lower() == 'true'
+    
     if not is_fast_test and projet_id:
         project_folder = session.get('project_folder')
         
@@ -168,61 +171,113 @@ def compare():
                 excel_path = os.path.join(treatment_folder, excel_filename)
                 generateur_excel.generer_rapport_fichier(excel_path)
                 
-                # Generate PDF file - need to get file sizes safely
-                try:
-                    # For large files, use file info from session
-                    if is_large_files:
-                        file1_size = session.get('file1_info', {}).get('total_rows', 0)
-                        file2_size = session.get('file2_info', {}).get('total_rows', 0)
-                    else:
-                        # For regular files, use dataframe lengths
-                        file1_size = len(df) if 'df' in locals() else 0
-                        file2_size = len(df2) if 'df2' in locals() else 0
-                except:
-                    file1_size = 0
-                    file2_size = 0
+                # Initialize PDF-related variables
+                pdf_filename = None
+                pdf_path = None
+                relative_pdf_path = None
+                relative_chart_path = None
                 
-                generateur_pdf = GenerateurPdf(
-                    results['ecarts_fichier1'],
-                    results['ecarts_fichier2'],
-                    file1_name,
-                    file2_name,
-                    file1_size,
-                    file2_size,
-                    results['n_common'],
-                    treatment_folder  # Save to treatment folder instead of project folder
-                )
-                
-                # Save PDF file to treatment folder
-                pdf_filename = f"rapport_comparaison_{timestamp}.pdf"
-                pdf_path = os.path.join(treatment_folder, pdf_filename)
-                generateur_pdf.generer_pdf_fichier(pdf_path)
-                
-                # Ensure chart file exists in treatment folder
-                chart_filename = "pie_chart.png"
-                chart_path = os.path.join(treatment_folder, chart_filename)
-                
-                # Check if chart was created by PDF generator
-                if not os.path.exists(chart_path):
-                    print(f"DEBUG: Chart not found at {chart_path}, checking other locations...")
-                    # Try to find chart in current directory or project folder
-                    possible_chart_locations = [
-                        os.path.join(os.getcwd(), "pie_chart.png"),
-                        os.path.join(project_folder, "pie_chart.png"),
-                        "pie_chart.png"
-                    ]
+                # Generate PDF file only if enabled (to prevent Docker worker timeouts)
+                if auto_pdf_enabled:
+                    try:
+                        # For large files, use file info from session
+                        if is_large_files:
+                            file1_size = session.get('file1_info', {}).get('total_rows', 0)
+                            file2_size = session.get('file2_info', {}).get('total_rows', 0)
+                        else:
+                            # For regular files, use dataframe lengths
+                            file1_size = len(df) if 'df' in locals() else 0
+                            file2_size = len(df2) if 'df2' in locals() else 0
+                    except:
+                        file1_size = 0
+                        file2_size = 0
                     
-                    for possible_location in possible_chart_locations:
-                        if os.path.exists(possible_location):
-                            print(f"DEBUG: Found chart at {possible_location}, copying to {chart_path}")
-                            import shutil
-                            shutil.copy2(possible_location, chart_path)
-                            break
-                    else:
-                        print(f"DEBUG: No chart file found in any expected location")
+                    try:
+                        print(f"Starting PDF generation for treatment {timestamp}...")
+                        
+                        generateur_pdf = GenerateurPdf(
+                            results['ecarts_fichier1'],
+                            results['ecarts_fichier2'],
+                            file1_name,
+                            file2_name,
+                            file1_size,
+                            file2_size,
+                            results['n_common'],
+                            treatment_folder  # Save to treatment folder instead of project folder
+                        )
+                        
+                        # Save PDF file to treatment folder
+                        pdf_filename = f"rapport_comparaison_{timestamp}.pdf"
+                        pdf_path = os.path.join(treatment_folder, pdf_filename)
+                        
+                        # Generate PDF with error handling
+                        generateur_pdf.generer_pdf_fichier(pdf_path)
+                        
+                        # Verify PDF was created successfully
+                        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
+                            print(f"PDF generated successfully: {pdf_path}")
+                        else:
+                            print(f"PDF generation failed or file is empty: {pdf_path}")
+                            pdf_filename = None
+                            pdf_path = None
+                        
+                        # Ensure chart file exists in treatment folder
+                        chart_filename = "pie_chart.png"
+                        chart_path = os.path.join(treatment_folder, chart_filename)
+                        
+                        # Check if chart was created by PDF generator
+                        if not os.path.exists(chart_path):
+                            print(f"DEBUG: Chart not found at {chart_path}, checking other locations...")
+                            # Try to find chart in current directory or project folder
+                            possible_chart_locations = [
+                                os.path.join(os.getcwd(), "pie_chart.png"),
+                                os.path.join(project_folder, "pie_chart.png"),
+                                "pie_chart.png"
+                            ]
+                            
+                            for possible_location in possible_chart_locations:
+                                if os.path.exists(possible_location):
+                                    print(f"DEBUG: Found chart at {possible_location}, copying to {chart_path}")
+                                    import shutil
+                                    shutil.copy2(possible_location, chart_path)
+                                    break
+                            else:
+                                print(f"DEBUG: No chart file found in any expected location")
+                        
+                        # Set PDF paths for database storage
+                        if pdf_filename:
+                            relative_pdf_path = f"treatment_{timestamp}/{pdf_filename}"
+                            relative_chart_path = f"treatment_{timestamp}/pie_chart.png"
+                        
+                        # Clean up matplotlib resources to prevent threading issues
+                        GenerateurPdf.cleanup_matplotlib()
+                        
+                        print(f"PDF generation completed for treatment {timestamp}")
+                        
+                    except Exception as pdf_error:
+                        print(f"Error during PDF generation: {pdf_error}")
+                        # Reset PDF variables on error
+                        pdf_filename = None
+                        pdf_path = None
+                        relative_pdf_path = None
+                        relative_chart_path = None
+                        
+                        # Clean up matplotlib resources even on error
+                        try:
+                            GenerateurPdf.cleanup_matplotlib()
+                        except:
+                            pass
+                        
+                        # Log the PDF error but don't fail the entire comparison
+                        log = LogExecution(
+                            projet_id=projet_id,
+                            statut='avertissement',
+                            message=f"PDF generation failed but Excel generated successfully: {str(pdf_error)}"
+                        )
+                        db.session.add(log)
                 
-                # Clean up matplotlib resources to prevent threading issues
-                GenerateurPdf.cleanup_matplotlib()
+                else:
+                    print("PDF generation disabled via environment variable")
                 
                 # Log success for file generation
                 log = LogExecution(
@@ -240,8 +295,10 @@ def compare():
                     
                     # Store the relative paths from the project archive folder
                     relative_excel_path = f"treatment_{timestamp}/{excel_filename}"
-                    relative_pdf_path = f"treatment_{timestamp}/{pdf_filename}"
-                    relative_chart_path = f"treatment_{timestamp}/pie_chart.png"
+                    
+                    # Create relative paths for PDF and chart (should be available with auto-generation)
+                    relative_pdf_path = f"treatment_{timestamp}/{pdf_filename}" if pdf_filename else None
+                    relative_chart_path = f"treatment_{timestamp}/pie_chart.png" if auto_pdf_enabled else None
                     
                     # Always create new treatment record with unique archive path and relative file paths
                     fichier_genere = FichierGenere(
@@ -257,8 +314,11 @@ def compare():
                 
                 db.session.commit()
                 
-                # Add flash message to inform user that files were auto-generated
-                flash(f"Rapport de comparaison terminé ! Les fichiers Excel et PDF ont été automatiquement sauvegardés dans le dossier d'archive du projet.", "success")
+                # Add flash message based on what was generated
+                if auto_pdf_enabled and pdf_path and os.path.exists(pdf_path):
+                    flash(f"Rapport de comparaison terminé ! Les fichiers Excel et PDF ont été automatiquement sauvegardés dans le dossier d'archive du projet.", "success")
+                else:
+                    flash(f"Rapport de comparaison terminé ! Le fichier Excel a été automatiquement sauvegardé dans le dossier d'archive du projet.", "success")
                 
             except Exception as e:
                 # Clean up matplotlib resources even in case of error

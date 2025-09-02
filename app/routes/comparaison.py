@@ -110,28 +110,40 @@ def compare():
         
         # Save configurations and statistics to MySQL manually for regular comparison (only if not fast test)
         if not is_fast_test and projet_id:
-            config1 = ConfigurationCleComposee(
-                projet_id=projet_id,
-                fichier='fichier1',
-                champs_concatenes=','.join(keys1)
-            )
-            config2 = ConfigurationCleComposee(
-                projet_id=projet_id,
-                fichier='fichier2',
-                champs_concatenes=','.join(keys2)
-            )
-            db.session.add_all([config1, config2])
+            # Check if statistics for this project already exist in the last minute (prevent duplicates)
+            from datetime import timedelta
+            one_minute_ago = datetime.now() - timedelta(minutes=1)
+            
+            recent_stat = StatistiqueEcart.query.filter(
+                StatistiqueEcart.projet_id == projet_id,
+                StatistiqueEcart.date_execution >= one_minute_ago
+            ).first()
+            
+            if not recent_stat:
+                config1 = ConfigurationCleComposee(
+                    projet_id=projet_id,
+                    fichier='fichier1',
+                    champs_concatenes=','.join(keys1)
+                )
+                config2 = ConfigurationCleComposee(
+                    projet_id=projet_id,
+                    fichier='fichier2',
+                    champs_concatenes=','.join(keys2)
+                )
+                db.session.add_all([config1, config2])
 
-            # Save statistics
-            stat = StatistiqueEcart(
-                projet_id=projet_id,
-                nb_ecarts_uniquement_fichier1=results['n1'],
-                nb_ecarts_uniquement_fichier2=results['n2'],
-                nb_ecarts_communs=results['n_common'],
-                date_execution=datetime.now()
-            )
-            db.session.add(stat)
-            db.session.commit()
+                # Save statistics
+                stat = StatistiqueEcart(
+                    projet_id=projet_id,
+                    nb_ecarts_uniquement_fichier1=results['n1'],
+                    nb_ecarts_uniquement_fichier2=results['n2'],
+                    nb_ecarts_communs=results['n_common'],
+                    date_execution=datetime.now()
+                )
+                db.session.add(stat)
+                db.session.commit()
+            else:
+                print(f"DEBUG: Skipping duplicate statistics for project {projet_id} - recent entry found in regular comparison")
 
     file1_name = session.get('file1_name', 'Fichier 1')
     file2_name = session.get('file2_name', 'Fichier 2')

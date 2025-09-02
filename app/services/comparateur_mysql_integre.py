@@ -422,6 +422,19 @@ class ComparateurFichiersAvecMySQL:
         try:
             from app.models import StatistiqueEcart, ConfigurationCleComposee
             
+            # Check if statistics for this project already exist in the last minute (prevent duplicates)
+            from datetime import datetime, timedelta
+            one_minute_ago = datetime.now() - timedelta(minutes=1)
+            
+            recent_stat = StatistiqueEcart.query.filter(
+                StatistiqueEcart.projet_id == projet_id,
+                StatistiqueEcart.date_execution >= one_minute_ago
+            ).first()
+            
+            if recent_stat:
+                print(f"DEBUG: Skipping duplicate statistics for project {projet_id} - recent entry found")
+                return
+            
             # Save configuration
             config1 = ConfigurationCleComposee(
                 projet_id=projet_id,

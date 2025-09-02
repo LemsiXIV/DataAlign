@@ -374,6 +374,7 @@ python maintenance.py
 | **ModuleNotFoundError** | PYTHONPATH manquant | `set PYTHONPATH=%PYTHONPATH%;%CD%` |
 | **Docker build fail** | Cache corrompu | `docker system prune -f` |
 | **Permission denied** | Droits uploads/ | `chmod 755 uploads` (Linux) |
+| **Statistiques dupliquées** | Entrées multiples BDD | `python clean_duplicate_stats.py` |
 
 ### 🔧 Diagnostic Rapide
 ```bash

@@ -31,6 +31,8 @@ ENV FLASK_ENV=production
 ENV FLASK_DEBUG=false
 ENV AUTO_MIGRATION=false
 ENV AUTO_PDF_GENERATION=true
+ENV CREATE_INITIAL_USERS=true
  
 # Run the application with increased timeout for large file processing
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "--timeout", "300", "--worker-class", "sync", "--max-requests", "100", "--max-requests-jitter", "10", "run:app"]
+# Start Gunicorn server with optimized configuration for stability
+CMD ["sh", "-c", "python create_docker_users.py && gunicorn -w 2 -b 0.0.0.0:5000 --timeout 300 --worker-class sync --max-requests 100 --max-requests-jitter 10 run:app"]

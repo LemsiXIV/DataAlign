@@ -23,6 +23,7 @@ services:
     environment:
       DATABASE_URL: "mysql+pymysql://dataalign:dataalign@db:3306/dataalign"
       AUTO_PDF_GENERATION: "true"
+      CREATE_INITIAL_USERS: "true"
     ports:
       - "5000:5000"
     volumes:

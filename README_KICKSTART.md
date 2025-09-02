@@ -95,7 +95,6 @@ python run.py
 
 ### Option 3 : Manuel (Si problèmes)
 ```bash
-python disable_migrations.py      # Désactive migrations auto
 python bypass_migrations.py       # Configure BDD
 python maintenance.py             # Vérifie tout
 python run.py                     # Démarre l'app
@@ -187,10 +186,7 @@ Services inclus :
 ### 🛠️ Scripts Spécialisés
 | Script | Usage | Description |
 |--------|-------|-------------|
-| `auto_migration_disabled.py` | `python auto_migration_disabled.py` | ⚙️ Désactivation permanente migrations |
 | `create_initial_users.py` | `python create_initial_users.py` | � Création comptes de test |
-| `verify_deployment.py` | `python verify_deployment.py` | ✅ Vérification déploiement |
-
 ---
 
 ## 🐳 DOCKER - DÉMARRAGE RAPIDE
@@ -337,12 +333,6 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ### 🔬 Tests Automatiques
 ```bash
-# Test complet système reset
-python test_password_reset.py
-
-# Test Docker complet
-python test_docker.py
-
 # Maintenance générale
 python maintenance.py
 ```
@@ -660,4 +650,4 @@ python maintenance.py
 *📅 Dernière mise à jour : Août 2025*  
 *🔧 Version : 2.0 - Reset Password + Docker + CI/CD*  
 *👨‍💻 Status : Production Ready*
-*devloped by Lemsi haithem*
+*devloped by Lemsi Med haithem*

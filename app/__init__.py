@@ -71,4 +71,52 @@ def create_app(config_name=None):
     app.register_blueprint(notifications_bp)
     app.register_blueprint(health_bp)
 
+    # Create initial users if enabled (for Docker deployment)
+    if os.getenv('CREATE_INITIAL_USERS', 'false').lower() == 'true':
+        with app.app_context():
+            try:
+                # Ensure tables exist first
+                db.create_all()
+                create_default_users()
+                print("✅ Initial users created successfully")
+            except Exception as e:
+                print(f"⚠️ Error creating initial users: {e}")
+
     return app
+
+def create_default_users():
+    """Create default test users for the application"""
+    from app.models.user import User
+    from werkzeug.security import generate_password_hash
+    
+    # Create admin user (testVikinn)
+    admin_user = User.query.filter_by(username='testVikinn').first()
+    if not admin_user:
+        admin_user = User(
+            username='testVikinn',
+            email='admin@dataalign.com',
+            full_name='Test Admin Vikinn',
+            password_hash=generate_password_hash('admin123'),
+            role='admin',
+            is_active=True
+        )
+        db.session.add(admin_user)
+        print("👑 Created admin user: testVikinn / admin123")
+    
+    # Create regular user (testuser)
+    regular_user = User.query.filter_by(username='testuser').first()
+    if not regular_user:
+        regular_user = User(
+            username='testuser',
+            email='user@dataalign.com',
+            full_name='Test User',
+            password_hash=generate_password_hash('test123'),
+            role='user',
+            is_active=True
+        )
+        db.session.add(regular_user)
+        print("👤 Created regular user: testuser / test123")
+    
+    # Commit all changes
+    db.session.commit()
+    print("✅ Default users created successfully")

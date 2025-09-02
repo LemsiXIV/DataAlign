@@ -1,0 +1,62 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+dataalign_env/
+venv/
+env/
+
+# Database files
+*.db
+*.sqlite3
+dataalign.db
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+temp/
+.tmp/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Docker volumes
+docker-data/
+
+# Uploads directory content (keep structure but ignore files)
+uploads/*/*
+!uploads/*/.gitkeep
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

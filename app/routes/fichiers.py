@@ -422,6 +422,16 @@ def download_excel():
         with open(temp_path, 'rb') as f:
             resultats = pickle.load(f)
         
+        # DEBUG: Print actual counts from pickle file
+        print(f"=== EXCEL DOWNLOAD DEBUG ===")
+        print(f"Pickle file path: {temp_path}")
+        print(f"Ecarts fichier 1: {len(resultats['ecarts_fichier1'])} rows")
+        print(f"Ecarts fichier 2: {len(resultats['ecarts_fichier2'])} rows")
+        print(f"Communs: {len(resultats['communs'])} rows")
+        print(f"File1 name: {resultats.get('file1_name', 'N/A')}")
+        print(f"File2 name: {resultats.get('file2_name', 'N/A')}")
+        print(f"===========================")
+        
         # Generate Excel file using GenerateurExcel class
         generateur_excel = GenerateurExcel(
             ecarts1=resultats['ecarts_fichier1'],

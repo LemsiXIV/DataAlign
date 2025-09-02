@@ -12,8 +12,30 @@ from app.services.comparateur_mysql_integre import ComparateurFichiersAvecMySQL,
 from app.services.generateur_excel import GenerateurExcel
 from app.services.generateur_pdf import GenerateurPdf
 from datetime import datetime, timedelta
+import glob
 
 comparaison_bp = Blueprint('comparaison', __name__)
+
+def cleanup_old_temp_files(temp_dir, max_age_hours=24):
+    """Clean up temporary comparison files older than max_age_hours"""
+    try:
+        import time
+        current_time = time.time()
+        max_age_seconds = max_age_hours * 3600
+        
+        # Find all comparison result files
+        pattern = os.path.join(temp_dir, "comparison_results_*.pkl")
+        for file_path in glob.glob(pattern):
+            try:
+                file_age = current_time - os.path.getmtime(file_path)
+                if file_age > max_age_seconds:
+                    os.remove(file_path)
+                    print(f"Cleaned up old temp file: {file_path}")
+            except OSError:
+                # File might have been deleted by another process
+                pass
+    except Exception as e:
+        print(f"Error during temp file cleanup: {e}")
 
 @comparaison_bp.route('/compare', methods=['POST'])
 def compare():
@@ -61,7 +83,7 @@ def compare():
                 keys2=keys2,
                 projet_id=projet_id if not is_fast_test else None,
                 chunk_size=5000,
-                sample_size=1000,
+                sample_size=50000,  # Increased from 1000 to 50000 for full results
                 use_mysql_temp=False  # Use SQLite for temp processing, MySQL for persistence
             )
             
@@ -300,9 +322,16 @@ def compare():
     # Store DataFrames in temporary files for download routes (avoid session size issues)
     import tempfile
     import pickle
+    import uuid
     
-    # Create temporary file for download results
-    temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl')
+    # Create temporary file for download results in persistent temp directory
+    # Use app/temp directory which is mounted as a volume in Docker
+    temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Generate unique filename
+    temp_filename = f"comparison_results_{uuid.uuid4().hex}.pkl"
+    temp_path = os.path.join(temp_dir, temp_filename)
     temp_results = {
         'ecarts_fichier1': results['ecarts_fichier1'],
         'ecarts_fichier2': results['ecarts_fichier2'],
@@ -312,12 +341,26 @@ def compare():
         'total1': results.get('nb_df', 0),
         'total2': results.get('nb_df2', 0)
     }
-    pickle.dump(temp_results, temp_file)
-    temp_file.close()
+    
+    # Write pickle file to persistent temp directory
+    with open(temp_path, 'wb') as temp_file:
+        pickle.dump(temp_results, temp_file)
     
     # Store only the file path in session (JSON serializable)
-    session['download_results_path'] = temp_file.name
+    session['download_results_path'] = temp_path
     session['resultats_comparaison'] = filtered_results  # Only stats, not DataFrames
+    
+    # DEBUG: Print what we're saving to pickle - COMPARE FUNCTION
+    print(f"=== COMPARISON SAVE DEBUG (COMPARE) ===")
+    print(f"Saved to pickle: {temp_path}")
+    print(f"Ecarts fichier 1: {ecarts1_total} rows")
+    print(f"Ecarts fichier 2: {ecarts2_total} rows") 
+    print(f"Communs: {communs_total} rows")
+    print(f"Web display counts: {ecarts1_total}, {ecarts2_total}, {communs_total}")
+    print(f"=======================================")
+    
+    # Cleanup old temp files
+    cleanup_old_temp_files(temp_dir)
     
     return render_template("compare.html",
                            key1=' + '.join(keys1),
@@ -364,7 +407,7 @@ def fast_compare():
                 keys2=keys2,
                 projet_id=None,  # No project for fast tests
                 chunk_size=3000,  # Smaller chunks for faster processing
-                sample_size=500,  # Smaller sample for faster results
+                sample_size=5000,  # Increased from 500 to 5000 for better fast test results
                 use_mysql_temp=False
             )
             
@@ -422,9 +465,16 @@ def fast_compare():
     # Store DataFrames in temporary files for download routes (avoid session size issues)
     import tempfile
     import pickle
+    import uuid
     
-    # Create temporary file for download results
-    temp_file = tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl')
+    # Create temporary file for download results in persistent temp directory
+    # Use app/temp directory which is mounted as a volume in Docker
+    temp_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Generate unique filename
+    temp_filename = f"comparison_results_{uuid.uuid4().hex}.pkl"
+    temp_path = os.path.join(temp_dir, temp_filename)
     temp_results = {
         'ecarts_fichier1': results['ecarts_fichier1'],
         'ecarts_fichier2': results['ecarts_fichier2'],
@@ -434,11 +484,13 @@ def fast_compare():
         'total1': results.get('nb_df', 0),
         'total2': results.get('nb_df2', 0)
     }
-    pickle.dump(temp_results, temp_file)
-    temp_file.close()
+    
+    # Write pickle file to persistent temp directory
+    with open(temp_path, 'wb') as temp_file:
+        pickle.dump(temp_results, temp_file)
     
     # Store only the file path in session (JSON serializable)
-    session['download_results_path'] = temp_file.name
+    session['download_results_path'] = temp_path
     session['resultats_comparaison'] = filtered_results  # Only stats, not DataFrames
 
     return render_template("compare.html",

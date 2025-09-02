@@ -11,6 +11,10 @@ class Config:
     # Active ou non l'auto migration (utile pour ne pas migrer en prod automatiquement)
     AUTO_MIGRATION = os.environ.get('AUTO_MIGRATION', 'false').lower() == 'true'
     
+    # OpenAI API Configuration
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    ENABLE_GPT_PROCESSING = os.environ.get('ENABLE_GPT_PROCESSING', 'false').lower() == 'true'
+    
     # Database configuration avec retry et timeout
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,

@@ -5,6 +5,10 @@ from flask_login import LoginManager
 import os
 from .config import config
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
@@ -60,6 +64,7 @@ def create_app(config_name=None):
     from app.routes.admin import admin_bp
     from app.routes.notifications import notifications_bp
     from app.routes.health import health_bp
+    from app.routes.gpt_routes import gpt_bp
 
 
     app.register_blueprint(projets_bp)
@@ -70,6 +75,7 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(notifications_bp)
     app.register_blueprint(health_bp)
+    app.register_blueprint(gpt_bp, url_prefix='/gpt')
 
     # Create initial users if enabled (for Docker deployment)
     if os.getenv('CREATE_INITIAL_USERS', 'false').lower() == 'true':

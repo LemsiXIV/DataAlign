@@ -119,6 +119,23 @@
                             </div>
                             {% endif %}
                         </div>
+                        
+                        <!-- GPT-4 Enhancement Options -->
+                        <div class="border-t pt-4 border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center mb-3">
+                                <input id="enable_gpt" name="enable_gpt" type="checkbox" value="true" 
+                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+                                <label for="enable_gpt" class="ml-2 text-sm font-medium text-gray-900 dark:text-gray-300">
+                                    🤖 Amélioration GPT-4 (Expérimental)
+                                </label>
+                            </div>
+                            <div class="ml-6 space-y-2 text-xs text-gray-500 dark:text-gray-400">
+                                <p>• Analyse intelligente de la structure des données</p>
+                                <p>• Nettoyage automatique des formats incohérents</p>
+                                <p>• Suggestions d'optimisation pour la comparaison</p>
+                            </div>
+                        </div>
+                        
                         <button type="submit"
                             class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">Compaire</button>
 

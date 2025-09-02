@@ -8,6 +8,38 @@ class LecteurFichierOptimise:
     def __init__(self, chunk_size: int = 5000):
         self.chunk_size = chunk_size
     
+    def _detect_csv_delimiter(self, file_path: str, encoding: str = 'utf-8') -> str:
+        """Detect CSV delimiter (comma, semicolon, tab, etc.)"""
+        import csv
+        
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                # Read a small sample
+                sample = f.read(1024)
+                
+            # Use csv.Sniffer to detect delimiter
+            sniffer = csv.Sniffer()
+            delimiter = sniffer.sniff(sample).delimiter
+            
+            # Common delimiters to check if sniffer fails
+            possible_delimiters = [',', ';', '\t', '|']
+            
+            # If sniffer found something not in our list, verify it
+            if delimiter not in possible_delimiters:
+                # Count occurrences of each delimiter in the sample
+                delimiter_counts = {}
+                for delim in possible_delimiters:
+                    delimiter_counts[delim] = sample.count(delim)
+                
+                # Choose the most frequent one
+                delimiter = max(delimiter_counts, key=delimiter_counts.get)
+            
+            return delimiter
+            
+        except Exception:
+            # Default fallback
+            return ','
+    
     def read_file_info(self, file_path: str) -> dict:
         """Get basic file information without loading entire file"""
         ext = file_path.split('.')[-1].lower()
@@ -17,11 +49,16 @@ class LecteurFichierOptimise:
             encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'iso-8859-1', 'cp1252']
             sample_df = None
             used_encoding = None
+            used_delimiter = None
             
             for encoding in encodings_to_try:
                 try:
+                    # Detect delimiter first
+                    delimiter = self._detect_csv_delimiter(file_path, encoding)
+                    used_delimiter = delimiter
+                    
                     sample_df = pd.read_csv(file_path, nrows=5, encoding=encoding,
-                                          on_bad_lines='skip', engine='python')
+                                          delimiter=delimiter, on_bad_lines='skip', engine='python')
                     used_encoding = encoding
                     break
                 except UnicodeDecodeError:
@@ -33,13 +70,13 @@ class LecteurFichierOptimise:
             if sample_df is None:
                 raise ValueError("Impossible de lire le fichier avec les encodages supportés (utf-8, latin-1, windows-1252)")
             
-            # Get total row count efficiently with the same encoding
+            # Get total row count efficiently with the same encoding and delimiter
             try:
                 with open(file_path, 'r', encoding=used_encoding) as f:
                     row_count = sum(1 for line in f) - 1  # Subtract header
             except Exception:
                 # Fallback: read the file and count rows
-                temp_df = pd.read_csv(file_path, encoding=used_encoding,
+                temp_df = pd.read_csv(file_path, encoding=used_encoding, delimiter=used_delimiter,
                                     on_bad_lines='skip', engine='python')
                 row_count = len(temp_df)
                 
@@ -58,7 +95,8 @@ class LecteurFichierOptimise:
             'total_columns': len(sample_df.columns),
             'sample_data': sample_df.to_dict(orient='records'),
             'file_extension': ext,
-            'encoding': used_encoding if ext == 'csv' else None
+            'encoding': used_encoding if ext == 'csv' else None,
+            'delimiter': used_delimiter if ext == 'csv' else None
         }
     
     def read_file_chunks(self, file_path: str, encoding: str = None) -> Iterator[pd.DataFrame]:
@@ -158,7 +196,8 @@ def read_uploaded_file_optimized(file_storage, max_preview_rows: int = 1000):
             ext = file_info['file_extension']
             if ext == 'csv':
                 encoding = file_info.get('encoding', 'utf-8')
-                df = pd.read_csv(temp_path, encoding=encoding,
+                delimiter = file_info.get('delimiter', ',')
+                df = pd.read_csv(temp_path, encoding=encoding, delimiter=delimiter,
                                on_bad_lines='skip', engine='python')
             elif ext in ['xls', 'xlsx']:
                 df = pd.read_excel(temp_path)

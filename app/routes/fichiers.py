@@ -329,12 +329,77 @@ def fast_upload():
         return render_index_with_errors(file2_error="Vous n'avez pas sélectionné le 2ème fichier", show_fast_modal=True)
 
     try:
+        # Check if GPT processing is enabled
+        enable_gpt = request.form.get('enable_gpt') == 'true'
+        
         # Use optimized file reader for fast tests
         result1 = read_uploaded_file_optimized(file, max_preview_rows=100)  # Smaller preview
         result2 = read_uploaded_file_optimized(file2, max_preview_rows=100)  # Smaller preview
         
         df = result1['data']
         df2 = result2['data']
+        
+        # Apply GPT processing if enabled
+        if enable_gpt:
+            try:
+                from ..services.gpt_data_processor import GPTDataProcessor
+                from ..config import Config
+                import os
+                
+                # Debug: Print the actual config values
+                print(f"🔍 Debug - Config.ENABLE_GPT_PROCESSING: {Config.ENABLE_GPT_PROCESSING}")
+                print(f"🔍 Debug - Config.OPENAI_API_KEY exists: {bool(Config.OPENAI_API_KEY)}")
+                print(f"🔍 Debug - Environment ENABLE_GPT_PROCESSING: {os.environ.get('ENABLE_GPT_PROCESSING')}")
+                print(f"🔍 Debug - Environment OPENAI_API_KEY exists: {bool(os.environ.get('OPENAI_API_KEY'))}")
+                
+                if Config.ENABLE_GPT_PROCESSING and Config.OPENAI_API_KEY:
+                    gpt_processor = GPTDataProcessor()
+                    
+                    # Check if files have structure issues (like semicolon delimiters)
+                    gpt_fixed = False
+                    if len(df.columns) == 1 and ';' in str(df.columns[0]):
+                        print("🔍 GPT-4 détecte un problème de structure dans le fichier 1...")
+                        df = gpt_processor.fix_file_with_gpt_analysis(result1['temp_path'])
+                        gpt_fixed = True
+                        
+                    if len(df2.columns) == 1 and ';' in str(df2.columns[0]):
+                        print("🔍 GPT-4 détecte un problème de structure dans le fichier 2...")
+                        df2 = gpt_processor.fix_file_with_gpt_analysis(result2['temp_path'])
+                        gpt_fixed = True
+                    
+                    # Apply additional cleaning
+                    df = gpt_processor.clean_data_chunk(df)
+                    df2 = gpt_processor.clean_data_chunk(df2)
+                    
+                    if gpt_fixed:
+                        print(f"✅ GPT-4 Fix Applied: File1 now has {len(df.columns)} columns, File2 now has {len(df2.columns)} columns")
+                        print(f"File1 columns: {df.columns.tolist()[:5]}...")  # Show first 5 columns
+                        print(f"File2 columns: {df2.columns.tolist()[:5]}...")  # Show first 5 columns
+                        
+                        # If we have large files and applied GPT fixes, we need to update the temp files
+                        if result1['is_large_file'] and session.get('file1_path'):
+                            try:
+                                # Save corrected DataFrame back to temp file
+                                df.to_csv(session['file1_path'], index=False, encoding='utf-8-sig')
+                                print(f"✅ Updated large file 1 temp with GPT corrections")
+                            except Exception as e:
+                                print(f"⚠️ Could not update large file 1 temp: {e}")
+                                
+                        if result2['is_large_file'] and session.get('file2_path'):
+                            try:
+                                # Save corrected DataFrame back to temp file
+                                df2.to_csv(session['file2_path'], index=False, encoding='utf-8-sig')
+                                print(f"✅ Updated large file 2 temp with GPT corrections")
+                            except Exception as e:
+                                print(f"⚠️ Could not update large file 2 temp: {e}")
+                    
+                    flash('🤖 GPT-4 a analysé et corrigé automatiquement la structure des fichiers!', 'success')
+                else:
+                    flash('⚠️ GPT-4 non configuré - traitement standard appliqué', 'warning')
+            except Exception as e:
+                flash(f'⚠️ Erreur GPT-4: {str(e)} - traitement standard appliqué', 'warning')
+                import traceback
+                print(f"GPT Error Details: {traceback.format_exc()}")
         
         # Store file information in session
         session['is_large_files'] = result1['is_large_file'] or result2['is_large_file']
@@ -384,6 +449,13 @@ def fast_upload():
     session['file1_name'] = file.filename
     session['file2_name'] = file2.filename
 
+    # DEBUG: Print what we're sending to template
+    print(f"🔍 TEMPLATE DEBUG:")
+    print(f"File1 columns being sent: {df.columns.tolist()}")
+    print(f"File2 columns being sent: {df2.columns.tolist()}")
+    print(f"File1 shape: {df.shape}")
+    print(f"File2 shape: {df2.shape}")
+
     return render_template('index.html', 
                             data=df.to_dict(orient='records'), 
                             columns=df.columns.tolist(), 
@@ -393,6 +465,17 @@ def fast_upload():
                             is_large_files=session.get('is_large_files', False),
                             file1_info=session.get('file1_info'),
                             file2_info=session.get('file2_info'))
+
+# Debug route to check DataFrame columns after processing
+@fichiers_bp.route('/debug_columns')
+def debug_columns():
+    """Debug route to show current DataFrame columns"""
+    import json
+    debug_info = {
+        'session_data': dict(session),
+        'message': 'Check console output for DataFrame details'
+    }
+    return f"<pre>{json.dumps(debug_info, indent=2, ensure_ascii=False)}</pre>"
 
 # Debug route (remove in production)
 @fichiers_bp.route('/debug_session')

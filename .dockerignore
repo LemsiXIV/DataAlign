@@ -8,6 +8,7 @@ __pycache__/
 venv/
 env/
 ENV/
+dataalign_env/
 
 # Node.js
 node_modules/

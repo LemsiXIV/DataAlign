@@ -132,6 +132,72 @@ def dashboard():
         else:
             # Utiliser les fichiers générés de la base de données
             for fichier in fichiers_generes:
+                # Vérifier si les fichiers existent réellement
+                has_excel_file = False
+                has_pdf_file = False
+                has_chart_file = False
+                
+                if fichier.chemin_archive:
+                    # Construire le chemin complet vers le dossier du traitement
+                    if os.path.isabs(fichier.chemin_archive):
+                        treatment_path = fichier.chemin_archive
+                    else:
+                        treatment_path = get_absolute_path(fichier.chemin_archive)
+                    
+                    print(f"DEBUG Dashboard: Checking treatment path: {treatment_path}")
+                    
+                    if os.path.exists(treatment_path):
+                        # Vérifier chaque type de fichier
+                        if fichier.nom_fichier_excel:
+                            # Essayer plusieurs emplacements pour le fichier Excel
+                            excel_locations = [
+                                os.path.join(treatment_path, os.path.basename(fichier.nom_fichier_excel)),
+                                os.path.join(treatment_path, fichier.nom_fichier_excel),
+                            ]
+                            # Si le nom du fichier contient un sous-dossier, essayer aussi cette structure
+                            if '/' in fichier.nom_fichier_excel:
+                                excel_locations.append(os.path.join(treatment_path, fichier.nom_fichier_excel))
+                            
+                            for excel_path in excel_locations:
+                                if os.path.exists(excel_path):
+                                    has_excel_file = True
+                                    print(f"DEBUG Dashboard: Excel found at: {excel_path}")
+                                    break
+                        
+                        if fichier.nom_fichier_pdf:
+                            # Essayer plusieurs emplacements pour le fichier PDF
+                            pdf_locations = [
+                                os.path.join(treatment_path, os.path.basename(fichier.nom_fichier_pdf)),
+                                os.path.join(treatment_path, fichier.nom_fichier_pdf),
+                            ]
+                            if '/' in fichier.nom_fichier_pdf:
+                                pdf_locations.append(os.path.join(treatment_path, fichier.nom_fichier_pdf))
+                            
+                            for pdf_path in pdf_locations:
+                                if os.path.exists(pdf_path):
+                                    has_pdf_file = True
+                                    print(f"DEBUG Dashboard: PDF found at: {pdf_path}")
+                                    break
+                        
+                        if fichier.nom_fichier_graphe:
+                            # Essayer plusieurs emplacements pour le fichier graphique
+                            chart_locations = [
+                                os.path.join(treatment_path, os.path.basename(fichier.nom_fichier_graphe)),
+                                os.path.join(treatment_path, fichier.nom_fichier_graphe),
+                            ]
+                            if '/' in fichier.nom_fichier_graphe:
+                                chart_locations.append(os.path.join(treatment_path, fichier.nom_fichier_graphe))
+                            
+                            for chart_path in chart_locations:
+                                if os.path.exists(chart_path):
+                                    has_chart_file = True
+                                    print(f"DEBUG Dashboard: Chart found at: {chart_path}")
+                                    break
+                    else:
+                        print(f"DEBUG Dashboard: Treatment path does not exist: {treatment_path}")
+                
+                print(f"DEBUG Dashboard: Treatment {fichier.id} - Excel: {has_excel_file}, PDF: {has_pdf_file}, Chart: {has_chart_file}")
+                
                 projets_tree[nom_projet].append({
                     'id': fichier.id,
                     'nom_traitement': fichier.nom_traitement_projet or f"Traitement {fichier.id}",
@@ -140,10 +206,10 @@ def dashboard():
                     'fichier_2': projet.fichier_2 or "Non défini", 
                     'emplacement_archive': projet.emplacement_archive or "Non défini",
                     'formatted_date': fichier.date_execution.strftime("%d/%m/%Y à %H:%M:%S") if fichier.date_execution else "Date inconnue",
-                    'has_excel': bool(fichier.nom_fichier_excel),
-                    'has_pdf': bool(fichier.nom_fichier_pdf),
-                    'has_chart': bool(fichier.nom_fichier_graphe),
-                    'has_files': bool(fichier.nom_fichier_excel or fichier.nom_fichier_pdf or fichier.nom_fichier_graphe),
+                    'has_excel': has_excel_file,  # Use real file existence
+                    'has_pdf': has_pdf_file,      # Use real file existence
+                    'has_chart': has_chart_file,  # Use real file existence
+                    'has_files': has_excel_file or has_pdf_file or has_chart_file,  # Use real file existence
                     'projet_id': projet.id
                 })
         
@@ -194,40 +260,98 @@ def projet_details(projet_id):
             if os.path.isabs(projet.emplacement_archive):
                 archive_path = projet.emplacement_archive
             else:
-                # Méthode plus robuste : partir du répertoire courant et remonter si nécessaire
+                # Pour Docker, construire le chemin depuis /app
                 current_dir = os.getcwd()
-                if current_dir.endswith('app'):
-                    # Si on est dans le dossier app/, remonter d'un niveau
-                    project_root = os.path.dirname(current_dir)
+                print(f"DEBUG: current_dir={current_dir}")
+                
+                if '/app' in current_dir:
+                    # Nous sommes dans un conteneur Docker
+                    app_root = '/app'
+                    archive_path = os.path.join(app_root, projet.emplacement_archive)
                 else:
-                    # Sinon, on est déjà à la racine
-                    project_root = current_dir
-                archive_path = os.path.join(project_root, projet.emplacement_archive)
+                    # Développement local
+                    if current_dir.endswith('app'):
+                        project_root = os.path.dirname(current_dir)
+                    else:
+                        project_root = current_dir
+                    archive_path = os.path.join(project_root, projet.emplacement_archive)
         else:
             archive_path = None
         
+        print(f"DEBUG: Archive path: {archive_path}")
+        
         if archive_path and os.path.exists(archive_path):
             print(f"DEBUG: Archive existe, vérification des fichiers...")
-            excel_path = os.path.join(archive_path, "rapport_comparaison.xlsx")
-            pdf_path = os.path.join(archive_path, "rapport_comparaison.pdf")
-            chart_file = os.path.join(archive_path, "pie_chart.png")
             
-            if os.path.exists(excel_path):
+            # D'abord chercher dans les sous-dossiers treatment_*
+            treatment_dirs = []
+            try:
+                all_items = os.listdir(archive_path)
+                treatment_dirs = [d for d in all_items if d.startswith('treatment_') and os.path.isdir(os.path.join(archive_path, d))]
+                print(f"DEBUG: Treatment directories found: {treatment_dirs}")
+            except Exception as e:
+                print(f"DEBUG: Error listing archive directory: {e}")
+            
+            if treatment_dirs:
+                # Prendre le plus récent
+                treatment_dir = sorted(treatment_dirs)[-1]
+                treatment_path = os.path.join(archive_path, treatment_dir)
+                print(f"DEBUG: Using treatment directory: {treatment_path}")
+                
+                # Chercher les fichiers dans le dossier treatment de manière récursive
+                excel_path = None
+                pdf_path = None
+                chart_file = None
+                
+                try:
+                    # Chercher récursivement dans le dossier treatment et ses sous-dossiers
+                    for root, dirs, files in os.walk(treatment_path):
+                        print(f"DEBUG: Checking directory: {root}")
+                        print(f"DEBUG: Files in directory: {files}")
+                        
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            if file.endswith('.xlsx') and not excel_path:
+                                excel_path = file_path
+                                print(f"DEBUG: Excel trouvé: {file} at {file_path}")
+                            elif file.endswith('.pdf') and not pdf_path:
+                                pdf_path = file_path
+                                print(f"DEBUG: PDF trouvé: {file} at {file_path}")
+                            elif file.endswith('.png') and ('chart' in file.lower() or 'pie' in file.lower()) and not chart_file:
+                                chart_file = file_path
+                                print(f"DEBUG: Chart trouvé: {file} at {file_path}")
+                            
+                except Exception as e:
+                    print(f"DEBUG: Error reading treatment directory: {e}")
+            else:
+                # Fallback: chercher directement dans l'archive
+                print(f"DEBUG: No treatment directories, checking archive directly")
+                excel_path = os.path.join(archive_path, "rapport_comparaison.xlsx")
+                pdf_path = os.path.join(archive_path, "rapport_comparaison.pdf")
+                chart_file = os.path.join(archive_path, "pie_chart.png")
+            
+            # Assigner les chemins trouvés
+            if excel_path and os.path.exists(excel_path):
                 rapport_excel_path = excel_path
-                print(f"DEBUG: Excel trouvé")
-            if os.path.exists(pdf_path):
+                print(f"DEBUG: Excel final: {excel_path}")
+            if pdf_path and os.path.exists(pdf_path):
                 rapport_pdf_path = pdf_path
-                print(f"DEBUG: PDF trouvé")
-            if os.path.exists(chart_file):
+                print(f"DEBUG: PDF final: {pdf_path}")
+            if chart_file and os.path.exists(chart_file):
                 chart_path = chart_file
-                print(f"DEBUG: Chart trouvé")
+                print(f"DEBUG: Chart final: {chart_file}")
                 
             # Vérifier s'il y a des fichiers dans le dossier pour le ZIP
             if os.path.isdir(archive_path):
-                files_in_dir = [f for f in os.listdir(archive_path) 
-                               if os.path.isfile(os.path.join(archive_path, f))]
-                has_files_to_download = len(files_in_dir) > 0
-                print(f"DEBUG: Fichiers pour ZIP: {len(files_in_dir)}")
+                try:
+                    files_in_dir = []
+                    for root, dirs, files in os.walk(archive_path):
+                        files_in_dir.extend([f for f in files if os.path.isfile(os.path.join(root, f))])
+                    has_files_to_download = len(files_in_dir) > 0
+                    print(f"DEBUG: Fichiers pour ZIP: {len(files_in_dir)}")
+                except Exception as e:
+                    print(f"DEBUG: Error counting files: {e}")
+                    has_files_to_download = False
         else:
             print(f"DEBUG: Archive n'existe pas ou non accessible")
         
@@ -771,7 +895,14 @@ def download_treatment_file(treatment_id, file_type):
     """Route pour télécharger un fichier spécifique d'un traitement (excel, pdf, chart)"""
     from app.models.fichier_genere import FichierGenere
     
+    print(f"DEBUG DOWNLOAD: treatment_id={treatment_id}, file_type={file_type}")
+    
     treatment = FichierGenere.query.get_or_404(treatment_id)
+    print(f"DEBUG DOWNLOAD: Found treatment: {treatment.id}")
+    print(f"DEBUG DOWNLOAD: chemin_archive={treatment.chemin_archive}")
+    print(f"DEBUG DOWNLOAD: nom_fichier_excel={treatment.nom_fichier_excel}")
+    print(f"DEBUG DOWNLOAD: nom_fichier_pdf={treatment.nom_fichier_pdf}")
+    print(f"DEBUG DOWNLOAD: nom_fichier_graphe={treatment.nom_fichier_graphe}")
     
     # Vérifier les permissions via le projet parent
     projet = treatment.projet
@@ -781,58 +912,140 @@ def download_treatment_file(treatment_id, file_type):
     
     if not treatment.chemin_archive:
         flash("Dossier de traitement introuvable", "error")
+        print(f"DEBUG DOWNLOAD: ERROR - No chemin_archive")
         return redirect(url_for('projets.dashboard'))
     
     # Construire le chemin absolu du traitement
+    # Dans un conteneur Docker, le chemin devrait être absolu depuis /app
     if os.path.isabs(treatment.chemin_archive):
         treatment_path = treatment.chemin_archive
     else:
-        # chemin_archive est relatif à la racine du projet
+        # Pour Docker, construire le chemin depuis /app
         current_dir = os.getcwd()
-        if current_dir.endswith('app'):
-            project_root = os.path.dirname(current_dir)
+        print(f"DEBUG DOWNLOAD: current_dir={current_dir}")
+        
+        if '/app' in current_dir:
+            # Nous sommes dans un conteneur Docker
+            app_root = '/app'
+            treatment_path = os.path.join(app_root, treatment.chemin_archive)
         else:
-            project_root = current_dir
-        treatment_path = os.path.join(project_root, treatment.chemin_archive)
+            # Développement local
+            if current_dir.endswith('app'):
+                project_root = os.path.dirname(current_dir)
+            else:
+                project_root = current_dir
+            treatment_path = os.path.join(project_root, treatment.chemin_archive)
+    
+    print(f"DEBUG DOWNLOAD: treatment_path={treatment_path}")
+    print(f"DEBUG DOWNLOAD: path exists? {os.path.exists(treatment_path)}")
     
     if not os.path.exists(treatment_path):
-        flash(f"Dossier de traitement introuvable: {treatment_path}", "error")
-        return redirect(url_for('projets.dashboard'))
+        # Essayer un chemin alternatif pour les traitements
+        # Si chemin_archive ne contient pas "treatment_", chercher le sous-dossier treatment
+        if 'treatment_' not in treatment_path:
+            # Lister les dossiers pour trouver le dossier treatment_*
+            try:
+                if os.path.exists(treatment_path):
+                    treatment_dirs = [d for d in os.listdir(treatment_path) if d.startswith('treatment_')]
+                    if treatment_dirs:
+                        treatment_path = os.path.join(treatment_path, treatment_dirs[0])
+                        print(f"DEBUG DOWNLOAD: Trying treatment subdir: {treatment_path}")
+            except Exception as e:
+                print(f"DEBUG DOWNLOAD: Error listing directory: {e}")
+        
+        if not os.path.exists(treatment_path):
+            flash(f"Dossier de traitement introuvable: {treatment_path}", "error")
+            print(f"DEBUG DOWNLOAD: ERROR - Path doesn't exist: {treatment_path}")
+            return redirect(url_for('projets.dashboard'))
     
     # Déterminer le fichier à télécharger selon le type
     file_path = None
     filename = None
     
     if file_type == 'excel' and treatment.nom_fichier_excel:
+        # Handle both old format (just filename) and new format (path/filename)
         if '/' in treatment.nom_fichier_excel or '\\' in treatment.nom_fichier_excel:
-            # Path relatif stocké dans la DB
+            # New format: file path includes subdirectory, extract just the filename
             filename = os.path.basename(treatment.nom_fichier_excel)
+            # Check if we need to look in a subdirectory
+            file_subdir = os.path.dirname(treatment.nom_fichier_excel)
+            if file_subdir:
+                file_path = os.path.join(treatment_path, file_subdir, filename)
+            else:
+                file_path = os.path.join(treatment_path, filename)
         else:
+            # Old format: just filename
             filename = treatment.nom_fichier_excel
-        file_path = os.path.join(treatment_path, filename)
+            file_path = os.path.join(treatment_path, filename)
+        print(f"DEBUG DOWNLOAD: Excel - filename={filename}, file_path={file_path}")
         
     elif file_type == 'pdf' and treatment.nom_fichier_pdf:
+        # Handle both old format (just filename) and new format (path/filename)
         if '/' in treatment.nom_fichier_pdf or '\\' in treatment.nom_fichier_pdf:
-            # Path relatif stocké dans la DB
+            # New format: file path includes subdirectory, extract just the filename
             filename = os.path.basename(treatment.nom_fichier_pdf)
+            # Check if we need to look in a subdirectory
+            file_subdir = os.path.dirname(treatment.nom_fichier_pdf)
+            if file_subdir:
+                file_path = os.path.join(treatment_path, file_subdir, filename)
+            else:
+                file_path = os.path.join(treatment_path, filename)
         else:
+            # Old format: just filename
             filename = treatment.nom_fichier_pdf
-        file_path = os.path.join(treatment_path, filename)
+            file_path = os.path.join(treatment_path, filename)
+        print(f"DEBUG DOWNLOAD: PDF - filename={filename}, file_path={file_path}")
         
     elif file_type == 'chart' and treatment.nom_fichier_graphe:
+        # Handle both old format (just filename) and new format (path/filename)
         if '/' in treatment.nom_fichier_graphe or '\\' in treatment.nom_fichier_graphe:
-            # Path relatif stocké dans la DB
+            # New format: file path includes subdirectory, extract just the filename
             filename = os.path.basename(treatment.nom_fichier_graphe)
+            # Check if we need to look in a subdirectory
+            file_subdir = os.path.dirname(treatment.nom_fichier_graphe)
+            if file_subdir:
+                file_path = os.path.join(treatment_path, file_subdir, filename)
+            else:
+                file_path = os.path.join(treatment_path, filename)
         else:
+            # Old format: just filename
             filename = treatment.nom_fichier_graphe
-        file_path = os.path.join(treatment_path, filename)
+            file_path = os.path.join(treatment_path, filename)
+        print(f"DEBUG DOWNLOAD: Chart - filename={filename}, file_path={file_path}")
+    
+    # If the file doesn't exist at the expected location, try alternative locations
+    if file_path and not os.path.exists(file_path):
+        print(f"DEBUG DOWNLOAD: File not found at {file_path}, trying alternatives...")
+        
+        # Try directly in the treatment directory
+        alt_file_path = os.path.join(treatment_path, filename)
+        if os.path.exists(alt_file_path):
+            file_path = alt_file_path
+            print(f"DEBUG DOWNLOAD: Found file at alternative location: {file_path}")
+        else:
+            # Try looking in the parent directory (project archive)
+            if treatment.projet and treatment.projet.emplacement_archive:
+                if '/app' in os.getcwd():
+                    app_root = '/app'
+                    parent_archive = os.path.join(app_root, treatment.projet.emplacement_archive)
+                else:
+                    parent_archive = treatment.projet.emplacement_archive
+                
+                parent_file_path = os.path.join(parent_archive, filename)
+                if os.path.exists(parent_file_path):
+                    file_path = parent_file_path
+                    print(f"DEBUG DOWNLOAD: Found file in parent archive: {file_path}")
     
     if not file_path or not filename:
         flash(f"Fichier {file_type} non disponible pour ce traitement", "error")
+        print(f"DEBUG DOWNLOAD: ERROR - No file_path or filename for type {file_type}")
         return redirect(url_for('projets.dashboard'))
+    
+    print(f"DEBUG DOWNLOAD: Final file_path={file_path}, exists? {os.path.exists(file_path)}")
     
     if not os.path.exists(file_path):
         flash(f"Fichier {file_type} introuvable: {file_path}", "error")
+        print(f"DEBUG DOWNLOAD: ERROR - File doesn't exist: {file_path}")
         return redirect(url_for('projets.dashboard'))
     
     return send_file(file_path, as_attachment=True, download_name=filename)

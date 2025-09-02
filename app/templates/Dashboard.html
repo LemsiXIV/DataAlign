@@ -756,6 +756,146 @@
             
             document.getElementById('modalTitle').textContent = `Traitement: ${projectName}`;
             
+            // Faire un appel API pour récupérer les statistiques détaillées
+            fetch(`/projet-details/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Données détaillées du projet:', data);
+                    
+                    const modalInfo = document.getElementById('modalInfo');
+                    modalInfo.innerHTML = `
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-gray-800 mb-2">Informations du traitement</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="font-medium text-gray-600">Nom du projet:</span>
+                                            <span class="text-gray-800">${projectName}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-medium text-gray-600">Date d'exécution:</span>
+                                            <span class="text-gray-800">${data.statistics?.date_execution || formattedDate}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-medium text-gray-600">ID du traitement:</span>
+                                            <span class="text-gray-800">${treatmentId}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="font-medium text-gray-600">ID du projet:</span>
+                                            <span class="text-gray-800">${projectId}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-gray-800 mb-2">Fichiers traités</h4>
+                                    <div class="space-y-2 text-sm">
+                                        <div>
+                                            <span class="font-medium text-gray-600">Fichier 1:</span>
+                                            <div class="text-gray-800 break-all">${fichier1}</div>
+                                        </div>
+                                        <div>
+                                            <span class="font-medium text-gray-600">Fichier 2:</span>
+                                            <div class="text-gray-800 break-all">${fichier2}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">Emplacement d'archive</h4>
+                            <p class="text-sm text-gray-600 break-all">${emplacementArchive}</p>
+                        </div>
+                        
+                        <!-- Statistiques détaillées -->
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-3">Statistiques de comparaison</h4>
+                            <div class="grid grid-cols-4 gap-4 text-center">
+                                <div>
+                                    <div class="text-2xl font-bold text-red-600">${data.statistics?.fichier1_unique || 0}</div>
+                                    <div class="text-xs text-gray-600">Uniquement fichier 1</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-bold text-blue-600">${data.statistics?.fichier2_unique || 0}</div>
+                                    <div class="text-xs text-gray-600">Uniquement fichier 2</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-bold text-green-600">${data.statistics?.communs || 0}</div>
+                                    <div class="text-xs text-gray-600">Lignes communes</div>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-bold text-purple-600">${data.statistics?.total_ecarts || 0}</div>
+                                    <div class="text-xs text-gray-600">Total écarts</div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center text-sm text-gray-600">
+                                Dernière exécution: ${data.statistics?.date_execution || 'N/A'}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">Fichiers disponibles</h4>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div class="text-center">
+                                    <div class="text-2xl ${data.has_excel ? 'text-green-600' : 'text-gray-400'}">${data.has_excel ? '✓' : '✗'}</div>
+                                    <div class="text-gray-600">Excel</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl ${data.has_pdf ? 'text-green-600' : 'text-gray-400'}">${data.has_pdf ? '✓' : '✗'}</div>
+                                    <div class="text-gray-600">PDF</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl ${data.has_chart ? 'text-green-600' : 'text-gray-400'}">${data.has_chart ? '✓' : '✗'}</div>
+                                    <div class="text-gray-600">Graphique</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Mettre à jour les actions avec les données réelles de l'API
+                    const modalActions = document.getElementById('modalActions');
+                    let actionsHtml = '';
+                    
+                    // Afficher le bouton Excel seulement si le fichier existe
+                    if (data.has_excel) {
+                        actionsHtml += `<a href="/download-treatment-file/${treatmentId}/excel" class="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                            📊 Télécharger Excel
+                        </a>`;
+                    }
+                    
+                    // Afficher le bouton PDF seulement si le fichier existe
+                    if (data.has_pdf) {
+                        actionsHtml += `<a href="/download-treatment-file/${treatmentId}/pdf" class="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center transition-colors">
+                            📄 Télécharger PDF
+                        </a>`;
+                    }
+                    
+                    // Si aucun fichier n'est disponible, afficher un message
+                    if (!data.has_excel && !data.has_pdf) {
+                        actionsHtml += `<p class="text-gray-500 text-center">Aucun fichier disponible au téléchargement</p>`;
+                    }
+                    
+                    modalActions.innerHTML = actionsHtml;
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des détails:', error);
+                    // Fallback vers l'affichage original en cas d'erreur
+                    showTreatmentDetailsModalFallback(projectId, treatmentId, projectName, formattedDate, fichier1, fichier2, emplacementArchive, hasExcel, hasPdf, hasChart, hasFiles);
+                });
+            
+            // Afficher le modal
+            document.getElementById('projectModal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('projectModal').classList.add('opacity-100');
+                document.getElementById('projectModal').classList.remove('opacity-0');
+            }, 10);
+        }
+        
+        function showTreatmentDetailsModalFallback(projectId, treatmentId, projectName, formattedDate, fichier1, fichier2, emplacementArchive, hasExcel, hasPdf, hasChart, hasFiles) {
+            console.log(`Affichage des détails du traitement ID: ${treatmentId} pour le projet: ${projectName}`);
+            
+            document.getElementById('modalTitle').textContent = `Traitement: ${projectName}`;
+            
             const modalInfo = document.getElementById('modalInfo');
             modalInfo.innerHTML = `
                 <div class="bg-gray-50 p-4 rounded-lg">

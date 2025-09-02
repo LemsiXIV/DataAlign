@@ -15,12 +15,48 @@
 
 ---
 
-## 🚀 DÉMARRAGE ULTRA-RAPIDE
+## � PRÉREQUIS SYSTÈME
+
+### 🐍 Python (Pour toutes les options)
+- **Python 3.8+** requis
+- **pip** (gestionnaire de paquets Python)
+- **venv** (environnement virtuel - recommandé)
+
+#### Installation Python par OS :
+```bash
+# 🪟 Windows
+# Télécharger : https://python.org/downloads/
+# ✅ Cocher "Add to PATH" lors de l'installation
+
+# 🐧 Linux (Ubuntu/Debian)
+sudo apt update
+sudo apt install python3 python3-pip python3-venv
+
+# 🍎 macOS (avec Homebrew)
+brew install python3
+
+# Vérification
+python --version  # ou python3 --version
+pip --version     # ou pip3 --version
+```
+
+### 🐳 Docker (Option 1 uniquement)
+- **Docker Desktop** (Windows/Mac) ou **Docker Engine** (Linux)
+- **Docker Compose** (inclus avec Desktop)
+
+---
+
+## �🚀 DÉMARRAGE ULTRA-RAPIDE
 
 ### Option 1 : Docker (Recommandé)
 ```bash
 # UNE SEULE COMMANDE POUR TOUT INSTALLER !
+# Script intelligent avec auto-installation Docker
+
 python start.py
+
+# OU manuel si Docker déjà installé :
+docker-compose up --build
 
 # Puis ouvrir : http://localhost:5000
 # Login : testVikinn / admin123
@@ -28,13 +64,32 @@ python start.py
 
 ### Option 2 : Installation Classique
 ```bash
-# 1. Installation dépendances
+# 1. Installer Python (si nécessaire)
+# Windows: https://python.org/downloads/ (Python 3.8+)
+# Linux: sudo apt install python3 python3-pip python3-venv
+# macOS: brew install python3
+
+# 2. Vérifier installation Python
+python --version
+pip --version
+
+# 3. Créer environnement virtuel (recommandé)
+python -m venv dataalign_env
+
+# 4. Activer environnement virtuel
+# Windows:
+dataalign_env\Scripts\activate
+# Linux/macOS:
+source dataalign_env/bin/activate
+
+# 5. Installation dépendances
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# 2. Configuration automatique
-python deploy.py
+# 6. Configuration automatique
+python maintenance.py
 
-# 3. Démarrage
+# 7. Démarrage
 python run.py
 ```
 
@@ -125,16 +180,16 @@ Services inclus :
 ### 🚀 Scripts Principaux
 | Script | Usage | Description |
 |--------|-------|-------------|
-| `start.py` | `python start.py` | 🏗️ Installation complète automatisée |
+| `start.py` | `python start.py` | 🏗️ Installation Docker complète automatisée |
 | `maintenance.py` | `python maintenance.py` | 🔧 Maintenance complète système |
 | `bypass_migrations.py` | `python bypass_migrations.py` | 🗄️ Contournement migrations Alembic |
 
 ### 🛠️ Scripts Spécialisés
 | Script | Usage | Description |
 |--------|-------|-------------|
-| `disable_migrations.py` | `python disable_migrations.py` | ⚙️ Désactivation permanente migrations |
-| `fix_database.py` | `python fix_database.py` | 🔧 Corrections spécifiques BDD |
-| `create_initial_users.py` | `python create_initial_users.py` | 👥 Création comptes de test |
+| `auto_migration_disabled.py` | `python auto_migration_disabled.py` | ⚙️ Désactivation permanente migrations |
+| `create_initial_users.py` | `python create_initial_users.py` | � Création comptes de test |
+| `verify_deployment.py` | `python verify_deployment.py` | ✅ Vérification déploiement |
 
 ---
 
@@ -389,7 +444,7 @@ Get-Process python                 # Windows
 docker-compose -f docker-compose.prod.yml up -d
 
 # Option 2 : Serveur classique
-python deploy.py                  # Installation
+python maintenance.py             # Configuration système
 pip install gunicorn              # Serveur production
 gunicorn -w 4 -b 0.0.0.0:5000 'app:create_app()'
 ```
@@ -586,7 +641,7 @@ DESIGN MODERNE ET RESPONSIVE :
 python start.py
 
 # Choix 2 : Installation classique
-python deploy.py
+python maintenance.py
 
 # Puis : http://localhost:5000
 # Login : testVikinn / admin123

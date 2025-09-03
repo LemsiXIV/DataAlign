@@ -1395,8 +1395,11 @@ def treatment_details(treatment_id):
                     archive_path = os.path.join(project_root, archive_path)
             
             print(f"DEBUG: Chemin d'archive: {archive_path}")
+            print(f"DEBUG: Archive existe: {os.path.exists(archive_path)}")
             
             if archive_path and os.path.exists(archive_path):
+                print(f"DEBUG: Contenu de l'archive: {os.listdir(archive_path) if os.path.exists(archive_path) else 'Non accessible'}")
+                
                 # Vérifier les fichiers spécifiques du traitement
                 if fichier_genere.nom_fichier_excel:
                     excel_path = os.path.join(archive_path, fichier_genere.nom_fichier_excel)
@@ -1416,42 +1419,102 @@ def treatment_details(treatment_id):
                         chart_path = chart_path_file
                         print(f"DEBUG: Fichier graphique trouvé: {chart_path_file}")
                 
-                # Si pas de fichiers spécifiques, chercher dans les sous-dossiers treatment_*
+                # Si pas de fichiers spécifiques, chercher directement dans le répertoire courant
                 if not (rapport_excel_path or rapport_pdf_path or chart_path):
-                    treatment_dirs = []
+                    print(f"DEBUG: Recherche directe de fichiers dans {archive_path}")
                     try:
-                        all_items = os.listdir(archive_path)
-                        treatment_dirs = [d for d in all_items if d.startswith('treatment_') and os.path.isdir(os.path.join(archive_path, d))]
+                        files_in_archive = os.listdir(archive_path)
+                        print(f"DEBUG: Fichiers trouvés: {files_in_archive}")
+                        
+                        for file in files_in_archive:
+                            file_path = os.path.join(archive_path, file)
+                            if os.path.isfile(file_path):
+                                if file.endswith('.xlsx') and not rapport_excel_path:
+                                    rapport_excel_path = file_path
+                                    print(f"DEBUG: Excel trouvé directement: {file_path}")
+                                elif file.endswith('.pdf') and not rapport_pdf_path:
+                                    rapport_pdf_path = file_path
+                                    print(f"DEBUG: PDF trouvé directement: {file_path}")
+                                elif file.endswith('.png') and not chart_path:
+                                    chart_path = file_path
+                                    print(f"DEBUG: Graphique trouvé directement: {file_path}")
                     except Exception as e:
-                        print(f"DEBUG: Error listing archive directory: {e}")
+                        print(f"DEBUG: Erreur lors de la lecture directe des fichiers: {e}")
+                
+                # Si toujours pas trouvé, chercher dans les sous-dossiers treatment_*
+                if not (rapport_excel_path or rapport_pdf_path or chart_path):
+                    print(f"DEBUG: Recherche de fichiers dans les sous-dossiers de {archive_path}")
+                    
+                    # Chercher récursivement dans l'archive pour trouver les dossiers treatment_
+                    def find_treatment_directories(base_path, max_depth=3, current_depth=0):
+                        """Recherche récursive des dossiers treatment_"""
+                        found_dirs = []
+                        if current_depth >= max_depth:
+                            return found_dirs
+                            
+                        try:
+                            for item in os.listdir(base_path):
+                                item_path = os.path.join(base_path, item)
+                                if os.path.isdir(item_path):
+                                    if item.startswith('treatment_'):
+                                        found_dirs.append(item_path)
+                                        print(f"DEBUG: Dossier treatment trouvé: {item_path}")
+                                    else:
+                                        # Recherche récursive dans les sous-dossiers
+                                        found_dirs.extend(find_treatment_directories(item_path, max_depth, current_depth + 1))
+                        except Exception as e:
+                            print(f"DEBUG: Erreur lors de la lecture du dossier {base_path}: {e}")
+                        
+                        return found_dirs
+                    
+                    treatment_dirs = find_treatment_directories(archive_path)
+                    print(f"DEBUG: {len(treatment_dirs)} dossiers treatment trouvés")
                     
                     if treatment_dirs:
                         # Chercher le dossier correspondant à la date du traitement
                         treatment_date_str = fichier_genere.date_execution.strftime('%Y%m%d_%H%M%S')
+                        print(f"DEBUG: Recherche de dossier correspondant à {treatment_date_str}")
+                        
                         matching_dir = None
                         
                         for treatment_dir in treatment_dirs:
-                            if treatment_date_str in treatment_dir:
+                            dir_name = os.path.basename(treatment_dir)
+                            if treatment_date_str in dir_name:
                                 matching_dir = treatment_dir
+                                print(f"DEBUG: Correspondance exacte trouvée: {matching_dir}")
                                 break
                         
                         # Si pas de correspondance exacte, prendre le plus récent
                         if not matching_dir:
                             matching_dir = sorted(treatment_dirs)[-1]
+                            print(f"DEBUG: Aucune correspondance exacte, utilisation du plus récent: {matching_dir}")
                         
-                        treatment_path = os.path.join(archive_path, matching_dir)
+                        treatment_path = matching_dir
                         
                         # Vérifier l'existence des fichiers spécifiques
                         try:
-                            for file in os.listdir(treatment_path):
+                            files_found = os.listdir(treatment_path)
+                            print(f"DEBUG: Fichiers dans {treatment_path}: {files_found}")
+                            
+                            for file in files_found:
                                 if file.endswith('.xlsx'):
                                     rapport_excel_path = os.path.join(treatment_path, file)
+                                    print(f"DEBUG: Excel trouvé: {rapport_excel_path}")
                                 elif file.endswith('.pdf'):
                                     rapport_pdf_path = os.path.join(treatment_path, file)
+                                    print(f"DEBUG: PDF trouvé: {rapport_pdf_path}")
                                 elif file.endswith('.png'):
                                     chart_path = os.path.join(treatment_path, file)
+                                    print(f"DEBUG: Graphique trouvé: {chart_path}")
                         except Exception as e:
-                            print(f"DEBUG: Error listing treatment directory: {e}")
+                            print(f"DEBUG: Erreur lors de la lecture du dossier treatment {treatment_path}: {e}")
+                    else:
+                        print(f"DEBUG: Aucun dossier treatment_ trouvé dans {archive_path}")
+            else:
+                print(f"DEBUG: Chemin d'archive non valide ou inexistant: {archive_path}")
+        
+        print(f"DEBUG: Résultat final - Excel: {rapport_excel_path is not None}, PDF: {rapport_pdf_path is not None}, Chart: {chart_path is not None}")
+        has_files_to_download = bool(rapport_excel_path or rapport_pdf_path or chart_path)
         
         # Compiler les statistiques de manière défensive
         fichier1_unique = 0

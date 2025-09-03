@@ -230,48 +230,52 @@
                                 </div>
 
 
-                            <!-- Upload 1 + Upload 2 -->
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <!-- File 1 -->
-                                <div>
-                                    <label for="file"
-                                        class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                                        Upload file 1
-                                    </label>
-                                    <input type="file" id="file" name="file" class="block w-full text-sm text-gray-900 border {% if file1_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer 
-                       bg-gray-50 dark:text-gray-400 focus:outline-none 
-                       dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
-                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
-                                        Veuillez choisir un fichier du format suivant : CSV, XLSX, JSON.
-                                    </div>
-                                    {% if file1_error %}
-                                    <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
-                                        <span class="font-medium">⚠️ {{ file1_error }}</span>
-                                    </div>
-                                    {% endif %}
-                                </div>
+                           
 
-                                <!-- File 2 -->
-                                <div>
-                                    <label for="file2"
-                                        class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                                        Upload file 2
-                                    </label>
-                                    <input type="file" id="file2" name="file2" class="block w-full text-sm text-gray-900 border {% if file2_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer 
-                       bg-gray-50 dark:text-gray-400 focus:outline-none 
-                       dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
-                                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
-                                        Veuillez choisir un fichier du format suivant : CSV, XLSX, JSON.
-                                    </div>
-                                    {% if file2_error %}
-                                    <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
-                                        <span class="font-medium">⚠️ {{ file2_error }}</span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
+
                         </div>
+                             <!-- Upload 1 + Upload 2 -->
+                           <div class="flex gap-6">
+                                    <!-- File 1 -->
+                                    <div class="flex-1">
+                                        <label for="file"
+                                            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                            Upload file 1
+                                        </label>
+                                        <input type="file" id="file" name="file" aria-describedby="file"
+                                            class="block w-full text-sm text-gray-900 border {% if file1_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer 
+                                            bg-gray-50 dark:text-gray-400 focus:outline-none 
+                                            dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                                            Veuillez choisir un fichier du format suivant : CSV, XLSX, JSON.
+                                        </div>
+                                        {% if file1_error %}
+                                        <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
+                                            <span class="font-medium">⚠️ {{ file1_error }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
 
+                                    <!-- File 2 -->
+                                    <div class="flex-1">
+                                        <label for="file2"
+                                            class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                                            Upload file 2
+                                        </label>
+                                        <input type="file" id="file2" name="file2"
+                                            class="block w-full text-sm text-gray-900 border {% if file2_error %}border-red-500 bg-red-50{% else %}border-gray-300{% endif %} rounded-lg cursor-pointer 
+                                            bg-gray-50 dark:text-gray-400 focus:outline-none 
+                                            dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+                                        <div class="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                                            Veuillez choisir un fichier du format suivant : CSV, XLSX, JSON.
+                                        </div>
+                                        {% if file2_error %}
+                                        <div class="mt-1 text-sm text-red-600 animate-pulse" role="alert">
+                                            <span class="font-medium">⚠️ {{ file2_error }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
 
                         <button type="submit" id="addProjectButton"
                             class="text-white inline-flex items-center bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
@@ -545,7 +549,7 @@
                 showSpinner(message);
             }
             // Main project form (Add new Project button)
-            else if (action && (action.includes('upload_file') || action.includes('upload'))) {
+            else if (action && action.includes('upload_file')) {
                 showSpinner('Creating project and processing files...');
             }
             // Comparison form (🧮 Comparer button)

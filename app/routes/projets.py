@@ -1317,3 +1317,199 @@ def request_deletion(projet_id):
                 flash('Error submitting deletion request. Please try again.', 'error')
     
     return redirect(url_for('projets.dashboard'))
+
+@projets_bp.route('/treatment-details/<int:treatment_id>')
+@login_required
+def treatment_details(treatment_id):
+    """Route pour afficher les détails d'un traitement spécifique avec ses statistiques"""
+    try:
+        print(f"DEBUG: Début traitement treatment ID: {treatment_id}")
+        
+        # Récupérer le FichierGenere pour obtenir les informations du traitement
+        fichier_genere = FichierGenere.query.get_or_404(treatment_id)
+        projet = fichier_genere.projet
+        
+        # Vérifier les permissions : seul le propriétaire ou l'admin peut voir les détails
+        if not current_user.is_admin() and projet.user_id != current_user.id:
+            return jsonify({
+                'error': True,
+                'message': 'Accès non autorisé à ce traitement'
+            }), 403
+        
+        print(f"DEBUG: Traitement trouvé - Excel: {fichier_genere.nom_fichier_excel}, PDF: {fichier_genere.nom_fichier_pdf}, Graphe: {fichier_genere.nom_fichier_graphe}")
+        
+        # Récupérer les statistiques spécifiques à ce traitement par date d'exécution
+        try:
+            # D'abord essayer de trouver les statistiques avec la date exacte
+            stats = StatistiqueEcart.query.filter_by(
+                projet_id=projet.id,
+                date_execution=fichier_genere.date_execution
+            ).first()
+            print(f"DEBUG: Statistiques pour la date exacte {fichier_genere.date_execution}: {stats is not None}")
+            
+            # Si pas trouvé, chercher dans une plage de temps autour de la date d'exécution (±1 heure)
+            if not stats:
+                from datetime import timedelta
+                date_min = fichier_genere.date_execution - timedelta(hours=1)
+                date_max = fichier_genere.date_execution + timedelta(hours=1)
+                
+                stats = StatistiqueEcart.query.filter(
+                    StatistiqueEcart.projet_id == projet.id,
+                    StatistiqueEcart.date_execution >= date_min,
+                    StatistiqueEcart.date_execution <= date_max
+                ).order_by(StatistiqueEcart.date_execution.desc()).first()
+                print(f"DEBUG: Statistiques dans la plage {date_min} - {date_max}: {stats is not None}")
+            
+            # Si toujours pas trouvé, prendre la plus récente du projet
+            if not stats:
+                stats = StatistiqueEcart.query.filter_by(projet_id=projet.id).order_by(
+                    StatistiqueEcart.date_execution.desc()
+                ).first()
+                print(f"DEBUG: Utilisation des statistiques les plus récentes: {stats is not None}")
+                
+        except Exception as e:
+            print(f"ERREUR lors de la récupération des statistiques: {e}")
+            stats = None
+        
+        # Construire les chemins pour vérifier l'existence des fichiers
+        rapport_excel_path = None
+        rapport_pdf_path = None
+        chart_path = None
+        has_files_to_download = False
+        
+        # Vérifier l'existence des fichiers dans l'archive
+        if fichier_genere.chemin_archive or projet.emplacement_archive:
+            # Utiliser le chemin du fichier généré ou celui du projet
+            archive_path = fichier_genere.chemin_archive or projet.emplacement_archive
+            
+            if not os.path.isabs(archive_path):
+                current_dir = os.getcwd()
+                if '/app' in current_dir:
+                    app_root = '/app'
+                    archive_path = os.path.join(app_root, archive_path)
+                else:
+                    if current_dir.endswith('app'):
+                        project_root = os.path.dirname(current_dir)
+                    else:
+                        project_root = current_dir
+                    archive_path = os.path.join(project_root, archive_path)
+            
+            print(f"DEBUG: Chemin d'archive: {archive_path}")
+            
+            if archive_path and os.path.exists(archive_path):
+                # Vérifier les fichiers spécifiques du traitement
+                if fichier_genere.nom_fichier_excel:
+                    excel_path = os.path.join(archive_path, fichier_genere.nom_fichier_excel)
+                    if os.path.exists(excel_path):
+                        rapport_excel_path = excel_path
+                        print(f"DEBUG: Fichier Excel trouvé: {excel_path}")
+                
+                if fichier_genere.nom_fichier_pdf:
+                    pdf_path = os.path.join(archive_path, fichier_genere.nom_fichier_pdf)
+                    if os.path.exists(pdf_path):
+                        rapport_pdf_path = pdf_path
+                        print(f"DEBUG: Fichier PDF trouvé: {pdf_path}")
+                
+                if fichier_genere.nom_fichier_graphe:
+                    chart_path_file = os.path.join(archive_path, fichier_genere.nom_fichier_graphe)
+                    if os.path.exists(chart_path_file):
+                        chart_path = chart_path_file
+                        print(f"DEBUG: Fichier graphique trouvé: {chart_path_file}")
+                
+                # Si pas de fichiers spécifiques, chercher dans les sous-dossiers treatment_*
+                if not (rapport_excel_path or rapport_pdf_path or chart_path):
+                    treatment_dirs = []
+                    try:
+                        all_items = os.listdir(archive_path)
+                        treatment_dirs = [d for d in all_items if d.startswith('treatment_') and os.path.isdir(os.path.join(archive_path, d))]
+                    except Exception as e:
+                        print(f"DEBUG: Error listing archive directory: {e}")
+                    
+                    if treatment_dirs:
+                        # Chercher le dossier correspondant à la date du traitement
+                        treatment_date_str = fichier_genere.date_execution.strftime('%Y%m%d_%H%M%S')
+                        matching_dir = None
+                        
+                        for treatment_dir in treatment_dirs:
+                            if treatment_date_str in treatment_dir:
+                                matching_dir = treatment_dir
+                                break
+                        
+                        # Si pas de correspondance exacte, prendre le plus récent
+                        if not matching_dir:
+                            matching_dir = sorted(treatment_dirs)[-1]
+                        
+                        treatment_path = os.path.join(archive_path, matching_dir)
+                        
+                        # Vérifier l'existence des fichiers spécifiques
+                        try:
+                            for file in os.listdir(treatment_path):
+                                if file.endswith('.xlsx'):
+                                    rapport_excel_path = os.path.join(treatment_path, file)
+                                elif file.endswith('.pdf'):
+                                    rapport_pdf_path = os.path.join(treatment_path, file)
+                                elif file.endswith('.png'):
+                                    chart_path = os.path.join(treatment_path, file)
+                        except Exception as e:
+                            print(f"DEBUG: Error listing treatment directory: {e}")
+        
+        # Compiler les statistiques de manière défensive
+        fichier1_unique = 0
+        fichier2_unique = 0
+        communs = 0
+        total_ecarts = 0
+        date_execution = "N/A"
+        
+        if stats:
+            try:
+                fichier1_unique = getattr(stats, 'nb_ecarts_uniquement_fichier1', 0) or 0
+                fichier2_unique = getattr(stats, 'nb_ecarts_uniquement_fichier2', 0) or 0
+                communs = getattr(stats, 'nb_ecarts_communs', 0) or 0
+                total_ecarts = fichier1_unique + fichier2_unique
+                date_execution = stats.date_execution.strftime('%Y-%m-%d %H:%M:%S') if stats.date_execution else "N/A"
+                print(f"DEBUG: Stats compilées - F1: {fichier1_unique}, F2: {fichier2_unique}, Communs: {communs}, Total: {total_ecarts}")
+            except Exception as e:
+                print(f"ERREUR lors de la compilation des stats: {e}")
+        else:
+            print(f"DEBUG: Aucune statistique trouvée pour le traitement {treatment_id}")
+        
+        # Compiler les informations du traitement
+        try:
+            treatment_info = {
+                'id': projet.id,
+                'treatment_id': treatment_id,
+                'nom_projet': str(projet.nom_projet) if projet.nom_projet else "Nom non défini",
+                'date_creation': projet.date_creation.strftime('%Y-%m-%d') if projet.date_creation else "Date non définie",
+                'fichier_1': str(projet.fichier_1) if projet.fichier_1 else "Fichier 1 non défini",
+                'fichier_2': str(projet.fichier_2) if projet.fichier_2 else "Fichier 2 non défini",
+                'emplacement_archive': str(fichier_genere.chemin_archive or projet.emplacement_archive) if (fichier_genere.chemin_archive or projet.emplacement_archive) else "Non défini",
+                'has_excel': bool(rapport_excel_path is not None),
+                'has_pdf': bool(rapport_pdf_path is not None),
+                'has_chart': bool(chart_path is not None),
+                'has_files_to_download': bool(rapport_excel_path or rapport_pdf_path or chart_path),
+                'statistics': {
+                    'fichier1_unique': int(fichier1_unique),
+                    'fichier2_unique': int(fichier2_unique),
+                    'communs': int(communs),
+                    'total_ecarts': int(total_ecarts),
+                    'date_execution': str(date_execution)
+                }
+            }
+            print(f"DEBUG: treatment_info créé avec succès pour traitement {treatment_id}")
+        except Exception as e:
+            print(f"ERREUR lors de la création de treatment_info: {e}")
+            raise
+        
+        return jsonify(treatment_info)
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERREUR COMPLÈTE dans treatment_details pour traitement {treatment_id}:")
+        print(error_details)
+        
+        return jsonify({
+            'error': True,
+            'message': f"Erreur lors du chargement des détails du traitement: {str(e)}",
+            'details': str(e)
+        }), 500

@@ -329,6 +329,9 @@ def fast_upload():
         return render_index_with_errors(file2_error="Vous n'avez pas sélectionné le 2ème fichier", show_fast_modal=True)
 
     try:
+        # Import os here to avoid UnboundLocalError
+        import os
+        
         # Check if GPT processing is enabled
         enable_gpt = request.form.get('enable_gpt') == 'true'
         
@@ -344,7 +347,6 @@ def fast_upload():
             try:
                 from ..services.gpt_data_processor import GPTDataProcessor
                 from ..config import Config
-                import os
                 
                 # Debug: Print the actual config values
                 print(f"🔍 Debug - Config.ENABLE_GPT_PROCESSING: {Config.ENABLE_GPT_PROCESSING}")
